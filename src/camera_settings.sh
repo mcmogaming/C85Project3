@@ -1,8 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 # This script allows you to set the camera params from the commandline
 # You should always set these two
 v4l2-ctl -d /dev/video1 --set-ctrl saturation=100
-v4l2-ctl -d /dev/video1 --set-ctrl exposure_auto=1 
+# You need to first set the exposure into manual mode, and then change the exposure level using exposure_absolute
+v4l2-ctl -d /dev/video1 --set-ctrl exposure_auto=1 # sets exposure to manual mode
+v4l2-ctl -d /dev/video1 --set-ctrl exposure_absolute=100 #min=5 max=10000 step=1
+
 
 # To list all the available options for the camera settings
 #v4l2-ctl -d /dev/video1 --list-ctrls-menus
@@ -16,3 +19,4 @@ v4l2-ctl -d /dev/video1 --set-ctrl exposure_auto=1
 # You need both of the commands below:
 #v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature_auto=0 #need to disable this flag first
 #v4l2-ctl -d /dev/video1 --set-ctrl white_balance_temperature=4500 #min=2800 max=6500 step=10
+
