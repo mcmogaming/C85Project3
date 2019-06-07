@@ -357,8 +357,11 @@ static int init_v4l2(struct vdIn *vd)
 
 	// Enumerate the supported formats to check whether the requested one
 	// is available. If not, we try to fall back to YUYV.
-	unsigned int device_formats[16] = { 0 };	// Assume no device supports more than 16 formats
-	int requested_format_found = 0, fallback_format = -1;
+	unsigned int device_formats[16];	// Assume no device supports more than 16 formats
+	memset(device_formats, 0, sizeof(unsigned int)*16);
+	int requested_format_found, fallback_format;
+	requested_format_found = 0;
+	fallback_format = -1;
 	if(enum_frame_formats(vd->fd, device_formats, ARRAY_SIZE(device_formats))) {
 		printf("Unable to enumerate frame formats");
 		goto fatal;
