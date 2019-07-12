@@ -30,6 +30,25 @@
 
 #include "roboAI.h"			// <--- Look at this header file!
 
+double dottie(double vx, double vy, double ux, double uy)
+{
+ // Returns the dot product of the two vectors [vx,vy] and [ux,uy]
+ return (vx*ux)+(vy*uy);
+}
+
+double crossie_sign(double vx, double vy, double ux, double uy)
+{
+ // Returns the sign of the Z component of the cross product of 
+ //   vectors [vx vy 0] and [ux uy 0]
+ // MIND THE ORDER! v rotating onto u.     
+ // i   j   k 
+ // vx  vy  0
+ // ux  uy  0
+    
+ if ((vx*uy)-(ux*vy)<0) return -1;
+ else return 1;
+}
+
 void clear_motion_flags(struct RoboAI *ai)
 {
  // Reset all motion flags. See roboAI.h for what each flag represents
@@ -448,6 +467,39 @@ void AI_calibrate(struct RoboAI *ai, struct blob *blobs)
  track_agents(ai,blobs);
 }
 
+void PD_align(BotInfo myBot, double ux, double uy, double Kp, double Kd, double minPower)
+{
+    static double scaleFactor=1;
+    static double err_old=0;
+    double err_new;
+    double derr;
+    double sgn;
+    double PD;
+        
+    sgn=crossie_sign(myBot.Heading[0],myBot.Heading[1],ux,uy);
+    err_new=acos(dottie(myBot.Heading[0],myBot.Heading[1],ux,uy));
+
+    if (err_new<myBot.dtpf)
+        scaleFactor*=.5;
+    else 
+    {
+        scaleFactor*=2.0;
+        if (scaleFactor>1) scaleFactor=1;
+    }
+    
+    derr=err_new-err_old;
+    PD=sgn*(Kp*err_new + Kd*derr)*scaleFactor*minPower;
+    err_old=err_new;
+
+    printf("PID(): err_new=%lf, sgn=%lf, dErr=%lf, PD=%lf\n",err_new,sgn,derr,PD);
+    
+    if (PD>100) PD=100;
+    if (PD<minPower) PD=minPower;
+    
+    BT_motor_port_start(RIGHT_MOTOR, (char)roundl(PD));
+    BT_motor_port_start(LEFT_MOTOR, (char)roundl(-PD));
+}
+
 void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
 {
  /*************************************************************************
@@ -495,14 +547,78 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   ** Do not change the behaviour of the robot ID routine **
  **************************************************************************/
 
- // change to the ports representing the left and right motors
- char lport=MOTOR_A;
- char rport=MOTOR_B;
+  static BotInfo myBot;
+  static BotInfo theirBot;
+  static BotInfo fluffy;
+  double ux,uy,len;
+  double angDif;
+  
+  // change to the ports representing the left and right motors
+  char lport=MOTOR_A;
+  char rport=MOTOR_B;
+ 
+  if (ai->st.state==1||ai->st.state==2)
+  {
+     // Update dtpf and robot heading
+     angDif=dottie(ai->st.self->dx,ai->st.self->dy,myBot.Heading[0],myBot.Heading[1]);
+     if (angDif<0)
+     {
+         ai->st.self->dx*=-1;
+         ai->st.self->dy*=-1;
+         angDif*=-1;
+     }
+     myBot.dtpf=acos(angDif);       // in Radians!
+     myBot.Heading[0]=ai->st.self->dx;
+     myBot.Heading[1]=ai->st.self->dy;
+     
+     // Match direction
+     if (ai->st.state==1)
+     {
+         fprintf(stderr,"Please enter desired direction ux:\n");
+         fscanf(stdin,"%lf",&ux);
+         fprintf(stderr,"Please enter desired direction uy:\n");
+         fscanf(stdin,"%lf",&uy);
+         len=sqrt((ux*ux)+(uy*uy));
+     }
+     angDif=dottie(ux,uy,myBot.Heading[0],myBot.Heading[1]);
+     if ((ai->st.state==1||ai->st.state==101||ai->st.state==201)&&angDif>ANGLE_DIFF_THRESH)
+         ai->st.state++;                        // Not aligned - go to state **2
+    
+     if (ai->st.state==2||ai->st.state==102||ai->st.state==202)
+     {
+         if (angDif>ANGLE_DIFF_THRESH)
+         {
+             printf("Angle difference is %lf\n",angDif);
+             printf("Executing PID alignment...\n");
+             PD_align(myBot,ux,uy,10,.5,35);
+         }
+         else
+         {
+             // Aligned - go back to state **1
+             printf("Alignment achieved! - going back to request a new vector\n");
+             ai->st.state--;
+             BT_all_stop(0);
+             clear_motion_flags(ai);
+         }
+     }
+  }
+ 
 
  if (ai->st.state==0||ai->st.state==100||ai->st.state==200)  	// Initial set up - find own, ball, and opponent blobs
  {
   // Carry out self id process.
   fprintf(stderr,"Initial state, self-id in progress...\n");
+  
+  memset(&myBot,0,sizeof(BotInfo));
+  memset(&theirBot,0,sizeof(BotInfo));
+  memset(&fluffy,0,sizeof(BotInfo));
+  myBot.Position[0]=-1;
+  myBot.Position[1]=-1;
+  theirBot.Position[0]=-1;              // Set to -1 if not identified and being tracked
+  theirBot.Position[1]=-1;
+  fluffy.Position[0]=-1;
+  fluffy.Position[1]=-1;
+  
   id_bot(ai,blobs);
   if ((ai->st.state%100)!=0)	// The id_bot() routine will change the AI state to initial state + 1
   {				// if robot identification is successful.
@@ -510,7 +626,68 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    BT_all_stop(0);
    clear_motion_flags(ai);
    fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.self->mx,ai->st.self->my,ai->st.state);
+   
+   if (ai->st.self!=NULL)
+   {
+       myBot.Motion[0]=ai->st.self->mx;
+       myBot.Motion[1]=ai->st.self->my;
+       myBot.Velocity[0]=ai->st.self->vx;
+       myBot.Velocity[1]=ai->st.self->vy;
+       myBot.Heading[0]=ai->st.self->dx;
+       myBot.Heading[1]=ai->st.self->dy;
+       myBot.Position[0]=ai->st.self->cx;
+       myBot.Position[1]=ai->st.self->cy;
+       myBot.bel=.9; 
+       myBot.dtpf=0;
+       if (((myBot.Motion[0]*myBot.Heading[0])+(myBot.Motion[1]*myBot.Heading[1]))<0)
+       {
+           myBot.Heading[0]=myBot.Heading[0]*-1;
+           myBot.Heading[1]=myBot.Heading[1]*-1;
+       }
+   }
+  
+   if (ai->st.opp!=NULL)
+   {
+       theirBot.Motion[0]=ai->st.opp->mx;
+       theirBot.Motion[1]=ai->st.opp->my;
+       theirBot.Velocity[0]=ai->st.opp->vx;
+       theirBot.Velocity[1]=ai->st.opp->vy;
+       theirBot.Heading[0]=ai->st.opp->dx;
+       theirBot.Heading[1]=ai->st.opp->dy;
+       theirBot.Position[0]=ai->st.opp->cx;
+       theirBot.Position[1]=ai->st.opp->cy;
+       theirBot.bel=.9; 
+       theirBot.dtpf=0;
+       if (((theirBot.Motion[0]*theirBot.Heading[0])+(theirBot.Motion[1]*theirBot.Heading[1]))<0)
+       {
+           theirBot.Heading[0]=theirBot.Heading[0]*-1;
+           theirBot.Heading[1]=theirBot.Heading[1]*-1;
+       }       
+   }
+   
+   if (ai->st.ball!=NULL)
+   {
+       fluffy.Motion[0]=ai->st.ball->mx;
+       fluffy.Motion[1]=ai->st.ball->my;
+       fluffy.Velocity[0]=ai->st.ball->vx;
+       fluffy.Velocity[1]=ai->st.ball->vy;
+       fluffy.Heading[0]=ai->st.ball->dx;
+       fluffy.Heading[1]=ai->st.ball->dy;
+       fluffy.Position[0]=ai->st.ball->cx;
+       fluffy.Position[1]=ai->st.ball->cy;
+       fluffy.bel=.9; 
+       fluffy.dtpf=0;
+       if (((fluffy.Motion[0]*fluffy.Heading[0])+(fluffy.Motion[1]*fluffy.Heading[1]))<0)
+       {
+           fluffy.Heading[0]=fluffy.Heading[0]*-1;
+           fluffy.Heading[1]=fluffy.Heading[1]*-1;
+       }
+   }
+
   }
+  
+  // Initialize BotInfo structures
+   
  }
  else
  {

@@ -26,12 +26,14 @@
 #include <stdlib.h>
 
 //update to actual motors
-#define LEFT_MOTOR MOTOR_C
-#define RIGHT_MOTOR MOTOR_D
+#define LEFT_MOTOR MOTOR_B
+#define RIGHT_MOTOR MOTOR_A
 
 #define AI_SOCCER 0 	// Play soccer!
 #define AI_PENALTY 1    // Go score some goals!
 #define AI_CHASE 2 	// Kick the ball around and chase it!
+
+#define ANGLE_DIFF_THRESH   .997    // About 4.7 degrees
 
 struct AI_data{
 	// This data structure is used to hold all data relevant to the state of the AI.
@@ -139,5 +141,18 @@ void clear_motion_flags(struct RoboAI *ai);
    Add headers for your own functions implementing the bot's soccer
    playing functionality below.
 *****************************************************************************/
+typedef struct BotInfo
+{
+        double Heading[2];              // Unit vectors - this should be
+        double Motion[2];               // stable to flipping and noise
+        double Position[2];             // Position - NOT a vector
+        double Velocity[2];             // NOT a unit vector
+        double bel;                     // Belief in the current parameters        
+        double dtpf;                    // Delta theta per frame
+} BotInfo;
+
+double dottie(double vx, double vy, double ux, double uy);
+double crossie_sign(double vx, double vy, double ux, double uy);
+void PD_align(BotInfo myBot, double ux, double uy, double Kp, double Kd, double minPower);
 
 #endif
