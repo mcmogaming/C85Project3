@@ -289,6 +289,89 @@ int BT_motor_port_start(char port_ids, char power)
  return(0); 
 }
 
+int BT_motor_port_speed(char port_ids, char speed) {
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //
+  // This function sends a command to the specified motor ports to set the motor
+  // speed to the desired value.
+  //
+  // Motor ports are identified by hex values (defined at the top), but here we
+  // will use
+  //  their associated names MOTOR_A through MOTOR_D. Multiple motors can be
+  //  started with a single command by ORing their respective hex values, e.g.
+  //
+  // BT_motor_port_power(MOTOR_A, 100);   	<-- set motor at port A to 100%
+  // power BT_motor_port_speed(MOTOR_A|MOTOR_C, 50);   <-- set motors at port A
+  // and port C to 50% speed
+  //
+  // Speed must be in [-100, 100] - Forward and reverse
+  //
+  // Note that starting a motor at 0% speed is *not the same* as stopping the
+  // motor.
+  //  to fully stop the motors you need to use the appropriate BT command.
+  //
+  // Inputs: The port identifiers
+  //         Desired speed value in [-100,100]
+  //
+  // Returins: 0 on success
+  //          -1 otherwise
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  void *p;
+  unsigned char *cp;
+  char reply[1024];
+  unsigned char cmd_string[15] = {0x0D, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0xA5, 0x00, 0x00,
+                                  0x81, 0x00, 0xA6, 0x00, 0x00};
+  //                          |length-2| | cnt_id | |type| | header |  |set
+  //                          speed| |layer|  |port ids|  |speed|      |start|
+  //                          |layer| |port id|
+
+  if (speed > 100 || speed < -100) {
+    fprintf(stderr, "BT_motor_port_speed: Power must be in [-100, 100]\n");
+    return (0);
+  }
+
+  if (port_ids > 15) {
+    fprintf(stderr, "BT_motor_port_speed: Invalid port id value\n");
+    return (0);
+  }
+
+  // Set message count id
+  p = (void *)&message_id_counter;
+  cp = (unsigned char *)p;
+  cmd_string[2] = *cp;
+  cmd_string[3] = *(cp + 1);
+
+  cmd_string[9] = port_ids;
+  cmd_string[11] = speed;
+  cmd_string[14] = port_ids;
+
+#ifdef __BT_debug
+  fprintf(stderr, "BT_motor_port_speed command string:\n");
+  for (int i = 0; i < 15; i++) {
+    fprintf(stderr, "%X, ", cmd_string[i] & 0xff);
+  }
+  fprintf(stderr, "\n");
+#endif
+
+  write(*socket_id, &cmd_string[0], 15);
+  read(*socket_id, &reply[0], 1023);
+
+  message_id_counter++;
+
+  if (reply[4] == 0x02) {
+#ifdef __BT_debug
+    fprintf(stderr, "BT_speed command(): Command successful\n");
+#endif
+  } else {
+    fprintf(stderr, "BT_speed command(): Command failed\n");
+    return (-1);
+  }
+  return (0);
+}
+
+
 int BT_motor_port_stop(char port_ids, int brake_mode)
 {
  //////////////////////////////////////////////////////////////////////////////////
