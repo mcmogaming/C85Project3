@@ -33,7 +33,10 @@
 #define AI_PENALTY 1    // Go score some goals!
 #define AI_CHASE 2 	// Kick the ball around and chase it!
 
-#define ANGLE_DIFF_THRESH   .997    // About 4.7 degrees
+#define ANGLE_DIFF_THRESH   0.077479    // This is in Radians - About 4.7 degrees
+#define KP 31.83                        // At error=PI (max angle error) this should give 100 as the power
+                                        // output of the controller
+#define KD 75.0                         // As dErr approaches dTheta, this reduces power to no more than 25
 
 struct AI_data{
 	// This data structure is used to hold all data relevant to the state of the AI.

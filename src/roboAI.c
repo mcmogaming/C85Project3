@@ -104,11 +104,12 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
  // location in the colour wheel and then set the angles below (in radians) to that colour's
  // angle within the wheel.
  // For reference: Red is at 0 degrees, Yellow is at 60 degrees, Green is at 120, and Blue at 240.
- if (col==0) {vr_x=cos(0); vr_y=sin(0);} 	                                         // detect red
- else if (col==1) {vr_x=cos(2.0*PI*(60.0/360.0)); vr_y=sin(2.0*PI*(60.0/360.0));}        // detect yellow
-// else if (col==1) {vr_x=cos(2.0*PI*(120.0/360.0)); vr_y=sin(2.0*PI*(120.0/360.0));}    // detect green
- else if (col==2) {vr_x=cos(2.0*PI*(240.0/360.0)); vr_y=sin(2.0*PI*(240.0/360.0));}      // detect blue
 
+  if (col==0) {vr_x=cos(0); vr_y=sin(0);}   // RED                                
+  else if (col==2) {vr_x=cos(2.0*PI*(60.0/360.0));
+                    vr_y=sin(2.0*PI*(60.0/360.0));}  // YELLOW
+  else if (col==1) {vr_x=cos(2.0*PI*(240.0/360.0));
+                   vr_y=sin(2.0*PI*(240.0/360.0));}      // BLUE
 
  // In what follows, colours are represented by a unit-length vector in the direction of the
  // hue for that colour. Similarity between two colours (e.g. a reference above, and a pixel's
@@ -469,32 +470,26 @@ void AI_calibrate(struct RoboAI *ai, struct blob *blobs)
 
 void PD_align(BotInfo myBot, double ux, double uy, double Kp, double Kd, double minPower)
 {
-    static double scaleFactor=1;
     static double err_old=0;
     double err_new;
     double derr;
     double sgn;
     double PD;
-        
-    sgn=crossie_sign(myBot.Heading[0],myBot.Heading[1],ux,uy);
-    err_new=acos(dottie(myBot.Heading[0],myBot.Heading[1],ux,uy));
 
-    if (err_new<myBot.dtpf)
-        scaleFactor*=.5;
-    else 
-    {
-        scaleFactor*=2.0;
-        if (scaleFactor>1) scaleFactor=1;
-    }
+//    sgn=crossie_sign(myBot.Heading[0],myBot.Heading[1],ux,uy);
+    sgn=crossie_sign(ux,uy,myBot.Heading[0],myBot.Heading[1]);
+    err_new=acos(dottie(myBot.Heading[0],myBot.Heading[1],ux,uy));
     
     derr=err_new-err_old;
-    PD=sgn*(Kp*err_new + Kd*derr)*scaleFactor*minPower;
+    PD=sgn*(Kp*err_new) + (Kd*(derr/PI));
     err_old=err_new;
 
-    printf("PID(): err_new=%lf, sgn=%lf, dErr=%lf, PD=%lf\n",err_new,sgn,derr,PD);
+//    printf("PID(): err_new=%lf, sgn=%lf, dErr=%lf, dptf=%lf, P=%lf, D=%lf, PD=%lf\n",err_new,sgn,derr,myBot.dtpf,Kp*err_new, Kd*(derr/PI), PD);
+
+    PD=sgn*15;
     
-    if (PD>100) PD=100;
-    if (PD<minPower) PD=minPower;
+    if (fabs(PD)>100) PD=sgn*100.0;
+    if (fabs(PD)<minPower) PD=sgn*minPower;
     
     BT_motor_port_start(RIGHT_MOTOR, (char)roundl(PD));
     BT_motor_port_start(LEFT_MOTOR, (char)roundl(-PD));
@@ -550,57 +545,89 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   static BotInfo myBot;
   static BotInfo theirBot;
   static BotInfo fluffy;
-  double ux,uy,len;
+  static double ux,uy,len;
   double angDif;
+  static int count=0;
+  static double old_dx=0, old_dy=0;
   
   // change to the ports representing the left and right motors
   char lport=MOTOR_A;
   char rport=MOTOR_B;
  
-  if (ai->st.state==1||ai->st.state==2)
+  if (ai->st.state==1||ai->st.state==2||ai->st.state==101||ai->st.state==102||ai->st.state==201||ai->st.state==202)
   {
-     // Update dtpf and robot heading
-     angDif=dottie(ai->st.self->dx,ai->st.self->dy,myBot.Heading[0],myBot.Heading[1]);
-     if (angDif<0)
+     if (ai->st.self!=NULL)
      {
-         ai->st.self->dx*=-1;
-         ai->st.self->dy*=-1;
-         angDif*=-1;
-     }
-     myBot.dtpf=acos(angDif);       // in Radians!
-     myBot.Heading[0]=ai->st.self->dx;
-     myBot.Heading[1]=ai->st.self->dy;
+      // Update dtpf and robot heading
+      angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
+      if (angDif<0)
+      {
+       myBot.Heading[0]=-ai->st.self->dx;
+       myBot.Heading[1]=-ai->st.self->dy;
+      }
+      else
+      {
+       myBot.Heading[0]=ai->st.self->dx;
+       myBot.Heading[1]=ai->st.self->dy;
+      }
+      myBot.dtpf=acos(angDif);       // in Radians!
+      angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
+      if (fabs(angDif)<.8) 
+      {
+          myBot.Heading[0]=old_dx;
+          myBot.Heading[1]=old_dy;
+      }
+          
+      // Match direction
+      if (ai->st.state==1)
+      {         
+          fprintf(stderr,"Please enter desired direction ux:\n");
+          fscanf(stdin,"%lf",&ux);
+          getchar();
+          fprintf(stderr,"Please enter desired direction uy:\n");
+          fscanf(stdin,"%lf",&uy);
+          getchar();
+          len=sqrt((ux*ux)+(uy*uy));
+          ux=ux/len;
+          uy=uy/len;
+          fprintf(stderr,"Desired direction vector is [%lf, %lf], heading is [%lf, %lf]\n",ux,uy,myBot.Heading[0],myBot.Heading[1]);
+      }
+      angDif=dottie(ux,uy,myBot.Heading[0],myBot.Heading[1]);
+      printf("Current parameters: blob=[%lf %lf], heading=[%lf, %lf], old heading=[%lf %lf], dot_blobHead=%lf, dot_newOld=%lf, angBlob=%lf, angHead=%lf\n",ai->st.self->dx, ai->st.self->dy,myBot.Heading[0],myBot.Heading[1],old_dx,old_dy,dottie(ai->st.self->dx,ai->st.self->dy,myBot.Heading[0],myBot.Heading[1]),dottie(myBot.Heading[0],myBot.Heading[1],old_dx,old_dy),atan2(ai->st.self->dy,ai->st.self->dx),atan2(myBot.Heading[1],myBot.Heading[0]));
+//      fprintf(stderr,"Cosine of angle difference is: %lf\n",angDif);
+      angDif=acos(angDif);
+//      fprintf(stderr,"Actual angular difference: %lf\n",angDif);
+      count++;
+      if (count>150)
+      {
+          ai->st.state=500;
+          BT_all_stop(0);
+          count=0;
+      }
      
-     // Match direction
-     if (ai->st.state==1)
-     {
-         fprintf(stderr,"Please enter desired direction ux:\n");
-         fscanf(stdin,"%lf",&ux);
-         fprintf(stderr,"Please enter desired direction uy:\n");
-         fscanf(stdin,"%lf",&uy);
-         len=sqrt((ux*ux)+(uy*uy));
-     }
-     angDif=dottie(ux,uy,myBot.Heading[0],myBot.Heading[1]);
-     if ((ai->st.state==1||ai->st.state==101||ai->st.state==201)&&angDif>ANGLE_DIFF_THRESH)
-         ai->st.state++;                        // Not aligned - go to state **2
-    
-     if (ai->st.state==2||ai->st.state==102||ai->st.state==202)
-     {
+      if ((ai->st.state==1||ai->st.state==101||ai->st.state==201)&&angDif>ANGLE_DIFF_THRESH)
+          ai->st.state++;                        // Not aligned - go to state **2
+             
+      if (ai->st.state==2||ai->st.state==102||ai->st.state==202)
+      {
          if (angDif>ANGLE_DIFF_THRESH)
          {
-             printf("Angle difference is %lf\n",angDif);
-             printf("Executing PID alignment...\n");
-             PD_align(myBot,ux,uy,10,.5,35);
+//             fprintf(stderr,"Angle difference is %lf\n",angDif);
+//             fprintf(stderr,"Executing PID alignment...\n");
+             PD_align(myBot,ux,uy,KD,KP,15);
          }
          else
          {
              // Aligned - go back to state **1
-             printf("Alignment achieved! - going back to request a new vector\n");
+//             fprintf(stderr,"Alignment achieved! - going back to request a new vector\n");
              ai->st.state--;
              BT_all_stop(0);
              clear_motion_flags(ai);
          }
-     }
+      }
+      old_dx=myBot.Heading[0];
+      old_dy=myBot.Heading[1];
+     }		// End if (ai->st.self!=NULL)
   }
  
 
@@ -625,7 +652,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    if (ai->st.self->cx>=512) ai->st.side=1; else ai->st.side=0;
    BT_all_stop(0);
    clear_motion_flags(ai);
-   fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.self->mx,ai->st.self->my,ai->st.state);
+   fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], blob direction=[%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.self->mx,ai->st.self->my,ai->st.self->dx,ai->st.self->dy,ai->st.state);
    
    if (ai->st.self!=NULL)
    {
@@ -633,17 +660,19 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        myBot.Motion[1]=ai->st.self->my;
        myBot.Velocity[0]=ai->st.self->vx;
        myBot.Velocity[1]=ai->st.self->vy;
+       if (((ai->st.self->mx*ai->st.self->dx)+(ai->st.self->my*ai->st.self->dy))<0)
+       {
+           ai->st.self->dx*=-1.0;
+           ai->st.self->dy*=-1.0;
+       }
        myBot.Heading[0]=ai->st.self->dx;
        myBot.Heading[1]=ai->st.self->dy;
        myBot.Position[0]=ai->st.self->cx;
        myBot.Position[1]=ai->st.self->cy;
        myBot.bel=.9; 
        myBot.dtpf=0;
-       if (((myBot.Motion[0]*myBot.Heading[0])+(myBot.Motion[1]*myBot.Heading[1]))<0)
-       {
-           myBot.Heading[0]=myBot.Heading[0]*-1;
-           myBot.Heading[1]=myBot.Heading[1]*-1;
-       }
+       old_dx=ai->st.self->dx;
+       old_dy=ai->st.self->dy;
    }
   
    if (ai->st.opp!=NULL)
@@ -652,17 +681,17 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        theirBot.Motion[1]=ai->st.opp->my;
        theirBot.Velocity[0]=ai->st.opp->vx;
        theirBot.Velocity[1]=ai->st.opp->vy;
+       if (((ai->st.opp->mx*ai->st.opp->dx)+(ai->st.opp->my*ai->st.opp->dy))<0)
+       {
+           ai->st.opp->dx*=-1;
+           ai->st.opp->dy*=-1;
+       }       
        theirBot.Heading[0]=ai->st.opp->dx;
        theirBot.Heading[1]=ai->st.opp->dy;
        theirBot.Position[0]=ai->st.opp->cx;
        theirBot.Position[1]=ai->st.opp->cy;
        theirBot.bel=.9; 
        theirBot.dtpf=0;
-       if (((theirBot.Motion[0]*theirBot.Heading[0])+(theirBot.Motion[1]*theirBot.Heading[1]))<0)
-       {
-           theirBot.Heading[0]=theirBot.Heading[0]*-1;
-           theirBot.Heading[1]=theirBot.Heading[1]*-1;
-       }       
    }
    
    if (ai->st.ball!=NULL)
@@ -677,11 +706,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        fluffy.Position[1]=ai->st.ball->cy;
        fluffy.bel=.9; 
        fluffy.dtpf=0;
-       if (((fluffy.Motion[0]*fluffy.Heading[0])+(fluffy.Motion[1]*fluffy.Heading[1]))<0)
-       {
-           fluffy.Heading[0]=fluffy.Heading[0]*-1;
-           fluffy.Heading[1]=fluffy.Heading[1]*-1;
-       }
    }
 
   }
