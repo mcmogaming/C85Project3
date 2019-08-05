@@ -14,6 +14,7 @@
  Be sure to document everything you do thoroughly.
 
  AI scaffold: Parker-Lee-Estrada, Summer 2013
+ Updated by F. Estrada, Aug 2019
 
 ***************************************************/
 
@@ -33,10 +34,7 @@
 #define AI_PENALTY 1    // Go score some goals!
 #define AI_CHASE 2 	// Kick the ball around and chase it!
 
-#define ANGLE_DIFF_THRESH   0.077479    // This is in Radians - About 4.7 degrees
-#define KP 31.83                        // At error=PI (max angle error) this should give 100 as the power
-                                        // output of the controller
-#define KD 75.0                         // As dErr approaches dTheta, this reduces power to no more than 25
+#define ANGLE_DIFF_THRESH   0.077479    // Successful alignment threshold in Radians - About 4.7 degrees
 
 struct AI_data{
 	// This data structure is used to hold all data relevant to the state of the AI.
@@ -99,6 +97,7 @@ struct RoboAI {
 	void (* runAI)(struct RoboAI *ai, struct blob *, void *state);
 	void (* calibrate)(struct RoboAI *ai, struct blob *);
 	struct AI_data st;
+        struct displayList *DPhead;
 };
 
 /**
@@ -139,11 +138,28 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col);
 void track_agents(struct RoboAI *ai, struct blob *blobs);
 void clear_motion_flags(struct RoboAI *ai);
 
+// Display List functions
+// the AI data structure provides a way for you to add graphical markers on-screen,
+// the functions below add points or lines at a specified location and with the
+// colour you want. Items you add will remain there until cleared. Do not mess
+// with the list directly, use the functions below!
+// Colours are specified as floating point values in [0,255], black is [0,0,0]
+// white is [255,255,255].
+struct displayList *addPoint(struct displayList *head, int x, int y, double R, double G, double B);
+struct displayList *addLine(struct displayList *head, int x1, int y1, int x2, int y2, double R, double G, double B);
+struct displayList *addVector(struct displayList *head, int x1, int y1, double dx, double dy, int length, double R, double G, double B);
+struct displayList *addCross(struct displayList *head, int x, int y, int length, double R, double G, double B);
+struct displayList *clearDP(struct displayList *head);
+
 /****************************************************************************
  TO DO:
    Add headers for your own functions implementing the bot's soccer
    playing functionality below.
 *****************************************************************************/
+
+/**********************************************************************************
+ * NEW STUFF for testing solution, Jul/Aug 2019
+ * ********************************************************************************/
 typedef struct BotInfo
 {
         double Heading[2];              // Unit vectors - this should be
@@ -151,11 +167,9 @@ typedef struct BotInfo
         double Position[2];             // Position - NOT a vector
         double Velocity[2];             // NOT a unit vector
         double bel;                     // Belief in the current parameters        
-        double dtpf;                    // Delta theta per frame
 } BotInfo;
-
 double dottie(double vx, double vy, double ux, double uy);
 double crossie_sign(double vx, double vy, double ux, double uy);
-void PD_align(BotInfo myBot, double ux, double uy, double Kp, double Kd, double minPower);
+void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPower);
 
 #endif

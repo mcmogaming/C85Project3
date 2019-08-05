@@ -15,7 +15,7 @@
  data structure, and drop by my office to discuss your plans.
 
  Image processing code - F. Estrada, Summer 2013
- Updated by F. Estrada, Summer 2018
+ Updated by F. Estrada, Summer 2019
 ****************************************************************/
 
 #ifndef __imageCapture_header
@@ -50,7 +50,6 @@
 #include <signal.h>
 #include <X11/Xlib.h>
 #include "v4l2uvc.h"
-//#include "utils.h"
 /* Fixed point arithmetic */
 #define FIXED Sint32
 #define FIXED_BITS 16
@@ -61,7 +60,7 @@
 
 #define PI 3.14159265354
 
-static const char version[] = "RoboSoccer rc1.2.2014";
+static const char version[] = "RoboSoccerEV3 V1.1.2019";
 
 struct blob{
         int label;		// Label in the labels image
@@ -83,6 +82,14 @@ struct blob{
 	double adj_Y[2][2];	// Y offset adjustment from image capture calibration process
 };
 
+struct displayList{
+        int type;               // 0 - point, 1 - line
+        int x1,y1;
+        int x2,y2;
+        double R,G,B;
+        struct displayList *next;
+};
+
 // Startup
 int imageCaptureStartup(char *devName, int rx, int ry, int own_col, int ai_mode);
 
@@ -102,11 +109,9 @@ void closeCam(struct vdIn *videoIn);
 // Frame processing
 double *getH(void);
 void fieldUnwarp(double *H, struct image *im);
-void bgSubtract(void);
 void bgSubtract2(void);
 void releaseBlobs(struct blob *blobList);
 void rgb2hsv(double R, double G, double B, double *H, double *S, double *V);
-struct image *blobDetect(unsigned char *fgIm, int sx, int sy, struct blob **blob_list, int *nblobs);
 struct image *blobDetect2(unsigned char *fgIm, int sx, int sy, struct blob **blob_list, int *nblobs);
 struct image *renderBlobs(unsigned char *fgIm, int sx, int sy, struct image *labels, struct blob *list);
 void drawLine(int x1, int y1, double vx, double vy, double scale, double R, double G, double B, struct image *dst);

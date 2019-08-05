@@ -29,7 +29,7 @@
   - Updating an OpenGL interactive display
 
  Image processing code - F. Estrada, Summer 2013
- Updated - F. Estrada, Jul. 2018.
+ Updated - F. Estrada, Jul. 2019.
 
  Code for initializing the camera and grabbing a frame adapted                    
                     from luvcview and uvccapture.                                
@@ -161,7 +161,7 @@ void FrameGrabLoop(void)
  //
  // - Obtains a video frame from the web cam
  // - Processes the video frame to extract the play field and 
- //   any blobs therein (see blobDetect()).
+ //   any blobs therein (see blobDetect2()).
  // - Calls the main AI processing function to allow your bot to
  //   plan and execute its actions based on the video data.
  // - Refreshes the video display - what gets displayed depends
@@ -175,6 +175,7 @@ void FrameGrabLoop(void)
   int ox,oy,i,j;
   double *tmpH;
   unsigned char *big, *tframe;
+  struct displayList *dp;
   struct image *t1, *t2, *t3;
   struct image *labIm, *blobIm;
   static int nblobs=0;
@@ -288,13 +289,28 @@ void FrameGrabLoop(void)
    //////////////////////////////////////////////////////////////////
    fieldUnwarp(H,t3);
    bgSubtract2();
-//   labIm=blobDetect(fieldIm,1024,768,&blobs,&nblobs);
    labIm=blobDetect2(fieldIm,1024,768,&blobs,&nblobs);
    if (blobs)
    {
     if (doAI==1) skynet.runAI(&skynet,blobs,NULL);
     else if (doAI==2) skynet.calibrate(&skynet,blobs);
     blobIm=renderBlobs(fieldIm,1024,768,labIm,blobs);
+    // Render anything in the display list
+    dp=skynet.DPhead;
+    while (dp)
+    {
+      if (dp->type==0)
+      {
+        drawBox(dp->x1-2,dp->y1-2,dp->x1+2,dp->y1+2,dp->R,dp->G,dp->B,blobIm);
+        drawBox(dp->x1-1,dp->y1-1,dp->x1+1,dp->y1+1,dp->R,dp->G,dp->B,blobIm);
+        drawBox(dp->x1-0,dp->y1-0,dp->x1+0,dp->y1+0,dp->R,dp->G,dp->B,blobIm);
+      }
+      else
+      {
+        drawLine(dp->x1,dp->y1,dp->x2,dp->y2,1,dp->R,dp->G,dp->B,blobIm);
+      }
+      dp=dp->next;
+    }
    }
    deleteImage(labIm);
   }
@@ -585,47 +601,6 @@ double *getH(void)
  return(H);
 }
 
-void bgSubtract(void)
-{
- ///////////////////////////////////////////////////////////////////////////////
- //
- // This function performs background subtraction. It zeroes-out any pixels that
- // are too similar to the background, or are not colorful enough. Thresholds
- // for this function are keyboard-controllable. See the handout for keyboard
- // commands that affect this function's work, and be sure to tune these
- // to adjust for the illumination conditions during the game!
- //
- ///////////////////////////////////////////////////////////////////////////////
- int j,i;
- double r,g,b,R,G,B,dd,mg;
- if (!gotbg) return;
-#pragma omp parallel for schedule(dynamic,16) private(i,j,r,g,b,R,G,B,dd,mg)
- for (j=0;j<768;j++)
-  for (i=0; i<1024; i++)
-  {
-   r=fieldIm[((i+(j*1024))*3)+0];
-   g=fieldIm[((i+(j*1024))*3)+1];
-   b=fieldIm[((i+(j*1024))*3)+2];
-   R=bgIm[((i+(j*1024))*3)+0];
-   G=bgIm[((i+(j*1024))*3)+1];
-   B=bgIm[((i+(j*1024))*3)+2];
-
-   // Compute magnitude of difference w.r.t. background image
-   dd=(r-R)*(r-R);
-   dd+=(g-G)*(g-G);
-   dd+=(b-B)*(b-B);
-   mg=(r+g+b)/3.0;
-
-   // Zero out background pixels and pixels that are not saturated (everything except uniforms/ball)
-   if ((dd<bgThresh)||(fabs((r-g)/mg)<colThresh&&fabs((r+g-(2*b))/mg)<2.0*colThresh))
-   {  
-    fieldIm[((i+(j*1024))*3)+0]=0;
-    fieldIm[((i+(j*1024))*3)+1]=0;
-    fieldIm[((i+(j*1024))*3)+2]=0;
-   }
-  }
-}
-
 void bgSubtract2(void)
 {
  ///////////////////////////////////////////////////////////////////////////////
@@ -679,11 +654,6 @@ void bgSubtract2(void)
     fieldIm[((i+(j*1024))*3)+2]=0;
    }
   }
-  
-//  f=fopen("satdump.dat","w");
-//  fwrite(&imT[0][0],1024*768*sizeof(double),1,f);
-//  fclose(f);
-//  gets(&line[0]);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -691,293 +661,6 @@ void bgSubtract2(void)
 // Blob detection and rendering
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-struct image *blobDetect(unsigned char *fgIm, int sx, int sy, struct blob **blob_list, int *nblobs)
-{
- /////////////////////////////////////////////////////////////////////////////////////////////////
- //
- // This function does blob detection on the rectified field image (after background subtraction)
- // and generates:
- // - A label image, with a unique label for pixels in each blob (sx * sy * 1 layer)
- // - A list of blob data structures with suitably estimated values (though note that some of
- //   the blob data values are filled-in by the AI code later on)
- // - The number of blobs found
- // 
- // NOTE 1: This function will ignore tiny blobs
- // NOTE 2: The list of blobs is created from scratch for each frame - blobs do not persist
- /////////////////////////////////////////////////////////////////////////////////////////////////
-
- static int pixStack[1024*768*2];
- int i,j,x,y;
- int mix,miy,mx,my;
- int lab;
- double R,G,B;
- double Ra,Ga,Ba;
- double Yb,Rg,L,tL,tYb,tRg;
- double xc,yc, oy1, oy2;
- int pixcnt;
- int *stack;
- int stackPtr;
- struct image *labIm, *tmpIm, *tmpIm2;
- struct blob *bl;
- double cov[2][2],T,D,L1,L2;
- struct kernel *kern;
-
- kern=GaussKernel(2);
- 
- // Clear any previous list of blobs
- if (*(blob_list)!=NULL)
- {
-  releaseBlobs(*(blob_list));
-  *(blob_list)=NULL;
- }
-
- // Assumed: Pixels in the input fgIm that have non-zero RGB values are foreground
- labIm=newImage(sx,sy,1);				// 1-layer labels image
- tmpIm=imageFromBuffer(fgIm,sx,sy,3);
- 
- // Filter background subtracted, saturation thresholded map to make smoother blobs
- tmpIm2=convolve_x(tmpIm,kern);
- deleteImage(tmpIm);
- tmpIm=convolve_y(tmpIm2,kern);
- deleteImage(tmpIm2);
- 
- stack=&pixStack[0];
- lab=1;		
- memset(stack,0,1024*768*2*sizeof(int));
-
- // Visit each pixel and try to grow a blob from it if it has a non-zero value
- for (j=0;j<sy;j++)
-  for (i=0;i<sx;i++)
-  {
-   R=*(tmpIm->layers[0]+i+(j*sx));
-   G=*(tmpIm->layers[1]+i+(j*sx));
-   B=*(tmpIm->layers[2]+i+(j*sx));
-   if (R+G+B>0)    // Found unlabeled pixel
-   {
-    // This is basically flood-fill
-    Yb=((R+G)-(2.0*B)+2.0)*.25;
-    Rg=((R-G)+1.0)*.5;
-    L=sqrt((Yb*Yb)+(Rg*Rg));
-    Yb/=L;
-    Rg/=L;
-    stackPtr=1;
-    *(stack+(2*stackPtr))=i;
-    *(stack+(2*stackPtr)+1)=j;
-    *(tmpIm->layers[0]+i+(j*sx)) = -(*(tmpIm->layers[0]+i+(j*sx)));
-    *(tmpIm->layers[1]+i+(j*sx)) = -(*(tmpIm->layers[1]+i+(j*sx)));
-    *(tmpIm->layers[2]+i+(j*sx)) = -(*(tmpIm->layers[2]+i+(j*sx)));
-    Ra=0;
-    Ga=0;
-    Ba=0;
-    xc=0;
-    yc=0;
-    mix=10000;
-    miy=10000;
-    mx=-10000;
-    my=-10000;
-    pixcnt=0;
-    while (stackPtr>0)
-    {
-     if (stackPtr>=1024*768) fprintf(stderr," *** Busted the stack!\n");
-     x=*(stack+(2*stackPtr));
-     y=*(stack+(2*stackPtr)+1);
-     stackPtr--;
-     *(labIm->layers[0]+x+(y*labIm->sx))=lab;
-     Ra-=*(tmpIm->layers[0]+x+(y*tmpIm->sx));
-     Ga-=*(tmpIm->layers[1]+x+(y*tmpIm->sx));
-     Ba-=*(tmpIm->layers[2]+x+(y*tmpIm->sx));
-     xc+=x;
-     yc+=y;
-     pixcnt++;
-     *(tmpIm->layers[0]+x+(y*sx)) = 0;
-     *(tmpIm->layers[1]+x+(y*sx)) = 0;
-     *(tmpIm->layers[2]+x+(y*sx)) = 0;
-     if (mix>x) mix=x;
-     if (miy>y) miy=y;
-     if (mx<x) mx=x;
-     if (my<y) my=y;
-     // Check neighbours
-     if (y>0)
-     {
-      R=*(tmpIm->layers[0]+x+((y-1)*sx)); 
-      G=*(tmpIm->layers[1]+x+((y-1)*sx)); 
-      B=*(tmpIm->layers[2]+x+((y-1)*sx)); 
-      tYb=((R+G)-(2.0*B)+2.0)*.25;
-      tRg=((R-G)+1.0)*.5;
-      tL=sqrt((tYb*tYb)+(tRg*tRg));
-      tYb/=tL;
-      tRg/=tL;
-      if (R+G+B>0&&(tYb*Yb)+(tRg*Rg)>colAngThresh)
-      {
-       stackPtr++;
-       *(stack+(2*stackPtr))=x;
-       *(stack+(2*stackPtr)+1)=y-1;
-       *(tmpIm->layers[0]+x+((y-1)*sx)) *= -1.0;
-       *(tmpIm->layers[1]+x+((y-1)*sx)) *= -1.0;
-       *(tmpIm->layers[2]+x+((y-1)*sx)) *= -1.0;
-      }
-     }
-     if (x<sx-1)
-     {
-      R=*(tmpIm->layers[0]+x+1+(y*sx)); 
-      G=*(tmpIm->layers[1]+x+1+(y*sx)); 
-      B=*(tmpIm->layers[2]+x+1+(y*sx)); 
-      tYb=((R+G)-(2.0*B)+2.0)*.25;
-      tRg=((R-G)+1.0)*.5;
-      tL=sqrt((tYb*tYb)+(tRg*tRg));
-      tYb/=tL;
-      tRg/=tL;
-      if (R+G+B>0&&(tYb*Yb)+(tRg*Rg)>colAngThresh)
-      {
-       stackPtr++;
-       *(stack+(2*stackPtr))=x+1;
-       *(stack+(2*stackPtr)+1)=y;
-       *(tmpIm->layers[0]+x+1+(y*sx)) *= -1.0;
-       *(tmpIm->layers[1]+x+1+(y*sx)) *= -1.0;
-       *(tmpIm->layers[2]+x+1+(y*sx)) *= -1.0;
-      }
-     }
-     if (y<sy-1)
-     {
-      R=*(tmpIm->layers[0]+x+((y+1)*sx)); 
-      G=*(tmpIm->layers[1]+x+((y+1)*sx)); 
-      B=*(tmpIm->layers[2]+x+((y+1)*sx)); 
-      tYb=((R+G)-(2.0*B)+2.0)*.25;
-      tRg=((R-G)+1.0)*.5;
-      tL=sqrt((tYb*tYb)+(tRg*tRg));
-      tYb/=tL;
-      tRg/=tL;
-      if (R+G+B>0&&(tYb*Yb)+(tRg*Rg)>colAngThresh)
-      {
-       stackPtr++;
-       *(stack+(2*stackPtr))=x;
-       *(stack+(2*stackPtr)+1)=y+1;
-       *(tmpIm->layers[0]+x+((y+1)*sx)) *= -1.0;
-       *(tmpIm->layers[1]+x+((y+1)*sx)) *= -1.0;
-       *(tmpIm->layers[2]+x+((y+1)*sx)) *= -1.0;
-      }
-     }
-     if (x>0)
-     {
-      R=*(tmpIm->layers[0]+x-1+(y*sx)); 
-      G=*(tmpIm->layers[1]+x-1+(y*sx)); 
-      B=*(tmpIm->layers[2]+x-1+(y*sx)); 
-      tYb=((R+G)-(2.0*B)+2.0)*.25;
-      tRg=((R-G)+1.0)*.5;
-      tL=sqrt((tYb*tYb)+(tRg*tRg));
-      tYb/=tL;
-      tRg/=tL;
-      if (R+G+B>0&&(tYb*Yb)+(tRg*Rg)>colAngThresh)
-      {
-       stackPtr++;
-       *(stack+(2*stackPtr))=x-1;
-       *(stack+(2*stackPtr)+1)=y;
-       *(tmpIm->layers[0]+x-1+(y*sx)) *= -1.0;
-       *(tmpIm->layers[1]+x-1+(y*sx)) *= -1.0;
-       *(tmpIm->layers[2]+x-1+(y*sx)) *= -1.0;
-      }
-     }
-    }	// End while
-    if (pixcnt>250)
-    {
-     // If the size of the blob is greater than a small threshold, inset it in the
-     // blob list and fill-out the blob data structure.
-     Ra/=pixcnt;
-     Ga/=pixcnt;
-     Ba/=pixcnt;
-     xc/=pixcnt;
-     yc/=pixcnt;
-     bl=(struct blob *)calloc(1,sizeof(struct blob));
-     bl->label=lab;
-     memset(&(bl->cx),0,5*sizeof(double));
-     memset(&(bl->cy),0,5*sizeof(double));
-     memset(&(bl->vx),0,5*sizeof(double));
-     memset(&(bl->vy),0,5*sizeof(double));
-     bl->mx=0;
-     bl->my=0;
-     bl->cx=xc;
-     bl->cy=yc;
-     bl->size=pixcnt;
-     bl->x1=mix;
-     bl->y1=miy;
-     bl->x2=mx;
-     bl->y2=my;
-     bl->R=Ra;
-     bl->G=Ga;
-     bl->B=Ba;
-     bl->age=0;
-     bl->next=NULL;
-     bl->idtype=0;
-     if (*(blob_list)==NULL) *(blob_list)=bl;
-     else {bl->next=(*(blob_list))->next; (*(blob_list))->next=bl;}
-    }
-    lab++;
-   }    // End if
-  }   // End for i
-
- deleteImage(tmpIm);
-
- // Count number of blobs found
- bl=*blob_list;
- *(nblobs)=0;
- while (bl!=NULL)
- {
-  *nblobs=(*nblobs) + 1;  
-  bl=bl->next;
- }
-
- // Compute blob direction for each blob
- bl=*blob_list;
- while (bl!=NULL)
- {
-  memset(&cov[0][0],0,4*sizeof(double));
-  for (j=bl->y1;j<=bl->y2;j++)
-   for (i=bl->x1;i<=bl->x2;i++)
-    if (*(labIm->layers[0]+i+(j*labIm->sx))==bl->label)
-    {
-     xc=i-bl->cx;
-     yc=j-bl->cy;
-     cov[0][0]+=(xc*xc);
-     cov[1][1]+=(yc*yc);
-     cov[0][1]+=(yc*xc);
-     cov[1][0]+=(xc*yc);
-    }
-  cov[0][0]/=bl->size;
-  cov[0][1]/=bl->size;
-  cov[1][0]/=bl->size;
-  cov[1][1]/=bl->size;
-  T=cov[0][0]+cov[1][1];
-  D=(cov[0][0]*cov[1][1])-(cov[1][0]*cov[0][1]);
-  L1=(.5*T)+sqrt(((T*T)/4)-D);
-  L2=(.5*T)-sqrt(((T*T)/4)-D);
-  if (fabs(L1)>fabs(L2))
-  {
-   bl->dx=L1-cov[1][1];
-   bl->dy=cov[1][0];
-  }
-  else
-  {
-   bl->dx=L2-cov[1][1];
-   bl->dy=cov[1][0];
-  } 
-  T=sqrt((bl->dx*bl->dx)+(bl->dy*bl->dy));
-  bl->dx/=T;
-  bl->dy/=T;
-
-  // Finally, if we have offset correction data, store it in the blob
-  if (got_Y==3)
-   memcpy(&bl->adj_Y[0][0],&adj_Y[0][0],4*sizeof(double));
-  else
-   memset(&bl->adj_Y[0][0],0,4*sizeof(double));
-
-  bl=bl->next;
- }
- 
- deleteKernel(kern);
- 
- return(labIm);
-} 
-
 void releaseBlobs(struct blob *blobList)
 {
  // Deletes a linked list of blobs
@@ -1645,7 +1328,7 @@ void kbHandler(unsigned char key, int x, int y)
  //
  /////////////////////////////////////////////////////////////////
  FILE *f;
-
+ struct displayList *q;
  // Exit!
  if (key=='q') 
  {
@@ -1654,6 +1337,12 @@ void kbHandler(unsigned char key, int x, int y)
   deleteImage(proc_im);
   glDeleteTextures(1,&texture);
   closeCam(webcam);
+  while (skynet.DPhead!=NULL)
+  {
+    q=skynet.DPhead->next;
+    free(skynet.DPhead);
+    skynet.DPhead=q;
+  }
   exit(0);
  }
 

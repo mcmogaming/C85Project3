@@ -25,11 +25,16 @@
 
   AI scaffold: Parker-Lee-Estrada, Summer 2013
 
-  Version: 1.1 - Updated Jun 30, 2018 - F. Estrada
+  EV3 Version 1.1 - Updated Aug 2019 - F. Estrada
 ***************************************************************************/
 
 #include "roboAI.h"			// <--- Look at this header file!
 
+
+/**************************************************************
+ * NEW STUFF added for testing solution
+ * Jul-Aug 2019
+ * ************************************************************/
 double dottie(double vx, double vy, double ux, double uy)
 {
  // Returns the dot product of the two vectors [vx,vy] and [ux,uy]
@@ -49,6 +54,171 @@ double crossie_sign(double vx, double vy, double ux, double uy)
  else return 1;
 }
 
+void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPower)
+{
+    static double err_old=0;
+    double Kp, Kd;
+    double err_new;
+    double derr;
+    double sgn;
+    double PD;
+    
+    Kp=(maxPower/PI);           // Results in the P component being = maxPower when 
+                                // the angular error is PI.
+    Kd=(maxPower/(2*PI));       // Results in the D component being = maxPowere/2
+                                // when the derivative of the error is PI radians/call
+    
+    sgn=crossie_sign(ux,uy,myBot.Heading[0],myBot.Heading[1]);          // Direction of turn
+    err_new=acos(dottie(myBot.Heading[0],myBot.Heading[1],ux,uy));
+    
+    derr=err_new-err_old;
+    PD=sgn*((Kp*err_new) + (Kd*derr));
+    err_old=err_new;
+
+    printf("PID(): err_new=%lf, sgn=%lf, dErr=%lf, P=%lf, D=%lf, PD=%lf\n",err_new,sgn,derr,Kp*err_new, Kd*derr, PD);
+
+//    PD=sgn*15;    // TESTING ONLY
+    
+    if (fabs(PD)>maxPower) PD=sgn*maxPower;
+    if (fabs(PD)<minPower) PD=sgn*minPower;
+    
+    BT_motor_port_start(RIGHT_MOTOR, (char)roundl(PD));
+    BT_motor_port_start(LEFT_MOTOR, (char)roundl(-PD));
+}
+/*************************************************************
+ * End of the NEW STUFF
+ * ***********************************************************/
+
+/**************************************************************
+ * Display List Management
+ * ***********************************************************/
+struct displayList *addPoint(struct displayList *head, int x, int y, double R, double G, double B)
+{
+  struct displayList *newNode;
+  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  if (newNode==NULL)
+  {
+    fprintf(stderr,"addPoint(): Out of memory!\n");
+    return head;
+  }
+  newNode->type=0;
+  newNode->x1=x;
+  newNode->y1=y;
+  newNode->x2=-1;
+  newNode->y2=-1;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  
+  newNode->next=head;
+  return(newNode);
+}
+
+struct displayList *addLine(struct displayList *head, int x1, int y1, int x2, int y2, double R, double G, double B)
+{
+  struct displayList *newNode;
+  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  if (newNode==NULL)
+  {
+    fprintf(stderr,"addLine(): Out of memory!\n");
+    return head;
+  }
+  newNode->type=1;
+  newNode->x1=x1;
+  newNode->y1=y1;
+  newNode->x2=x2;
+  newNode->y2=y2;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);  
+}
+
+struct displayList *addVector(struct displayList *head, int x1, int y1, double dx, double dy, int length, double R, double G, double B)
+{
+  struct displayList *newNode;
+  double l;
+  
+  l=sqrt((dx*dx)+(dy*dy));
+  dx=dx/l;
+  dy=dy/l;
+  
+  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  if (newNode==NULL)
+  {
+    fprintf(stderr,"addVector(): Out of memory!\n");
+    return head;
+  }
+  newNode->type=1;
+  newNode->x1=x1;
+  newNode->y1=y1;
+  newNode->x2=x1+(length*dx);
+  newNode->y2=y1+(length*dy);
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);
+}
+
+struct displayList *addCross(struct displayList *head, int x, int y, int length, double R, double G, double B)
+{
+  struct displayList *newNode;
+  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  if (newNode==NULL)
+  {
+    fprintf(stderr,"addLine(): Out of memory!\n");
+    return head;
+  }
+  newNode->type=1;
+  newNode->x1=x-length;
+  newNode->y1=y;
+  newNode->x2=x+length;
+  newNode->y2=y;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  head=newNode;
+
+  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  if (newNode==NULL)
+  {
+    fprintf(stderr,"addLine(): Out of memory!\n");
+    return head;
+  }
+  newNode->type=1;
+  newNode->x1=x;
+  newNode->y1=y-length;
+  newNode->x2=x;
+  newNode->y2=y+length;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);
+}
+
+struct displayList *clearDP(struct displayList *head)
+{
+  struct displayList *q;
+  while(head)
+  {
+      q=head->next;
+      free(head);
+      head=q;
+  }
+  return(NULL);
+}
+
+/**************************************************************
+ * End of Display List Management
+ * ***********************************************************/
+
+/*************************************************************
+ * Blob identification and tracking
+ * ***********************************************************/
 void clear_motion_flags(struct RoboAI *ai)
 {
  // Reset all motion flags. See roboAI.h for what each flag represents
@@ -94,10 +264,7 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
                                                           // to be considered gray-ish (as a percentage
                                                           // of intensity)
 
- // For whatever reason, green printed paper tends to be problematic, so, we will use yellow instead,
- // but, the code below can be made to detect a green uniform if needed by commenting/uncommenting
- // the appropriate line just below.
- // The reference colour here is in the HSV colourspace, we look at the hue component, which is a
+ // The reference colours here are in the HSV colourspace, we look at the hue component, which is a
  // defined within a colour-wheel that contains all possible colours. Hence, the hue component
  // is a value in [0 360] degrees, or [0 2*pi] radians, indicating the colour's location on the
  // colour wheel. If we want to detect a different colour, all we need to do is figure out its
@@ -105,11 +272,12 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
  // angle within the wheel.
  // For reference: Red is at 0 degrees, Yellow is at 60 degrees, Green is at 120, and Blue at 240.
 
-  if (col==0) {vr_x=cos(0); vr_y=sin(0);}   // RED                                
+  // Agent IDs are as follows: 0 : Own bot,  1 : Opponent's bot, 2 : Ball
+  if (col==0) {vr_x=cos(0); vr_y=sin(0);}                   // RED                                
   else if (col==2) {vr_x=cos(2.0*PI*(60.0/360.0));
-                    vr_y=sin(2.0*PI*(60.0/360.0));}  // YELLOW
+                    vr_y=sin(2.0*PI*(60.0/360.0));}         // YELLOW
   else if (col==1) {vr_x=cos(2.0*PI*(240.0/360.0));
-                   vr_y=sin(2.0*PI*(240.0/360.0));}      // BLUE
+                   vr_y=sin(2.0*PI*(240.0/360.0));}         // BLUE
 
  // In what follows, colours are represented by a unit-length vector in the direction of the
  // hue for that colour. Similarity between two colours (e.g. a reference above, and a pixel's
@@ -161,7 +329,6 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
 
  return(fnd);
 }
-
 
 void track_agents(struct RoboAI *ai, struct blob *blobs)
 {
@@ -392,7 +559,13 @@ void id_bot(struct RoboAI *ai, struct blob *blobs)
  // At each point, each agent currently in the field should have been identified.
  return;
 }
+/*********************************************************************************
+ * End of blob ID and tracking code
+ * ******************************************************************************/
 
+/*********************************************************************************
+ * Routine to initialize the AI 
+ * *******************************************************************************/
 int setupAI(int mode, int own_col, struct RoboAI *ai)
 {
  /////////////////////////////////////////////////////////////////////////////
@@ -456,6 +629,7 @@ int setupAI(int mode, int own_col, struct RoboAI *ai)
  ai->st.oppID=0;
  ai->st.ballID=0;
  clear_motion_flags(ai);
+ ai->DPhead=NULL;
  fprintf(stderr,"Initialized!\n");
 
  return(1);
@@ -465,40 +639,22 @@ void AI_calibrate(struct RoboAI *ai, struct blob *blobs)
 {
  // Basic colour blob tracking loop for calibration of vertical offset
  // See the handout for the sequence of steps needed to achieve calibration.
+ // The code here just makes sure the image processing loop is constantly
+ // tracking the bots while they're placed in the locations required
+ // to do the calibration (i.e. you DON'T need to add anything more
+ // in this function).
  track_agents(ai,blobs);
 }
 
-void PD_align(BotInfo myBot, double ux, double uy, double Kp, double Kd, double minPower)
-{
-    static double err_old=0;
-    double err_new;
-    double derr;
-    double sgn;
-    double PD;
 
-//    sgn=crossie_sign(myBot.Heading[0],myBot.Heading[1],ux,uy);
-    sgn=crossie_sign(ux,uy,myBot.Heading[0],myBot.Heading[1]);
-    err_new=acos(dottie(myBot.Heading[0],myBot.Heading[1],ux,uy));
-    
-    derr=err_new-err_old;
-    PD=sgn*(Kp*err_new) + (Kd*(derr/PI));
-    err_old=err_new;
-
-//    printf("PID(): err_new=%lf, sgn=%lf, dErr=%lf, dptf=%lf, P=%lf, D=%lf, PD=%lf\n",err_new,sgn,derr,myBot.dtpf,Kp*err_new, Kd*(derr/PI), PD);
-
-    PD=sgn*15;
-    
-    if (fabs(PD)>100) PD=sgn*100.0;
-    if (fabs(PD)<minPower) PD=sgn*minPower;
-    
-    BT_motor_port_start(RIGHT_MOTOR, (char)roundl(PD));
-    BT_motor_port_start(LEFT_MOTOR, (char)roundl(-PD));
-}
-
+/**************************************************************************
+ * AI state machine - this is where you will implement your soccer
+ * playing logic
+ * ************************************************************************/
 void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
 {
  /*************************************************************************
-  This is the main AI loop.
+  This is your robot's state machine.
   
   It is called by the imageCapture code *once* per frame. And it *must not*
   enter a loop or wait for visual events, since no visual refresh will happen
@@ -537,7 +693,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   'r' - reset the AI. Will set AI state to zero and re-initialize the AI
 	data structure.
   't' - Toggle the AI routine (i.e. start/stop calls to AI_main() ).
-  'o' - Robot immediate all-stop! - do not allow your NXT to get damaged!
+  'o' - Robot immediate all-stop! - do not allow your EV3 to get damaged!
 
   ** Do not change the behaviour of the robot ID routine **
  **************************************************************************/
@@ -550,15 +706,27 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   static int count=0;
   static double old_dx=0, old_dy=0;
   
-  // change to the ports representing the left and right motors
+  // change to the ports representing the left and right motors in YOUR robot
   char lport=MOTOR_A;
   char rport=MOTOR_B;
- 
-  if (ai->st.state==1||ai->st.state==2||ai->st.state==101||ai->st.state==102||ai->st.state==201||ai->st.state==202)
-  {
-     if (ai->st.self!=NULL)
+
+  
+  /*****************************************************
+   * Working PD controller for alignment with a target vector
+   * using the blob's direction (spin in place)
+   * The Kp and Kd values are computed from the desired
+   * max and min rotation speeds. Threshold for alignment
+   * is defined in roboAI.h.
+   * - Would like to: Use smoothed direction when there
+   *   is indication we got a nonsense reading
+   * - Assigned to states **1 and **2
+   * ***************************************************/
+
+  if (ai->st.state%1==0||ai->st.state%2==0)                         // States **1 and **2 are for PD alignment
+  {                                                                 // **1 requests initialization of alignment
+     if (ai->st.self!=NULL)                                         // routine, **2 means robot is turning to align
      {
-      // Update dtpf and robot heading
+      // Update robot heading
       angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
       if (angDif<0)
       {
@@ -570,7 +738,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        myBot.Heading[0]=ai->st.self->dx;
        myBot.Heading[1]=ai->st.self->dy;
       }
-      myBot.dtpf=acos(angDif);       // in Radians!
       angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
       if (fabs(angDif)<.8) 
       {
@@ -605,32 +772,47 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
           count=0;
       }
      
-      if ((ai->st.state==1||ai->st.state==101||ai->st.state==201)&&angDif>ANGLE_DIFF_THRESH)
-          ai->st.state++;                        // Not aligned - go to state **2
+      // Display target direction and current heading
+      if (ai->DPhead!=NULL) ai->DPhead=clearDP(ai->DPhead);
+      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],myBot.Heading[0],myBot.Heading[1],25,0,128,255);
+      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],ux,uy,25,64,255,0);
+      
+      if ((ai->st.state%1==0)&&angDif>ANGLE_DIFF_THRESH)    // Not aligned - go to state **2
+          ai->st.state++;                        
              
-      if (ai->st.state==2||ai->st.state==102||ai->st.state==202)
+      if (ai->st.state%2==0)    // Alignment is ongoing
       {
          if (angDif>ANGLE_DIFF_THRESH)
          {
-//             fprintf(stderr,"Angle difference is %lf\n",angDif);
-//             fprintf(stderr,"Executing PID alignment...\n");
-             PD_align(myBot,ux,uy,KD,KP,15);
+             PD_align(myBot,ux,uy,75,15);
          }
          else
          {
              // Aligned - go back to state **1
-//             fprintf(stderr,"Alignment achieved! - going back to request a new vector\n");
              ai->st.state--;
              BT_all_stop(0);
              clear_motion_flags(ai);
+             count=0;
          }
       }
       old_dx=myBot.Heading[0];
       old_dy=myBot.Heading[1];
      }		// End if (ai->st.self!=NULL)
   }
- 
-
+  /************************************************************
+   * END of PD alignment code block for states **1 and **2
+   * **********************************************************/
+  
+  /************************************************************
+   * Standard initialization routine for starter code,
+   * from state **0 performs agent detection and initializes
+   * directions, motion vectors, and locations
+   * Triggered by toggling the AI on.
+   * - Modified now (not in starter code!) to have local
+   *   but STATIC data structures to keep track of robot
+   *   parameters across frames (blob parameters change
+   *   frame to frame, memoryless).
+   ************************************************************/
  if (ai->st.state==0||ai->st.state==100||ai->st.state==200)  	// Initial set up - find own, ball, and opponent blobs
  {
   // Carry out self id process.
@@ -670,7 +852,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        myBot.Position[0]=ai->st.self->cx;
        myBot.Position[1]=ai->st.self->cy;
        myBot.bel=.9; 
-       myBot.dtpf=0;
        old_dx=ai->st.self->dx;
        old_dy=ai->st.self->dy;
    }
@@ -691,7 +872,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        theirBot.Position[0]=ai->st.opp->cx;
        theirBot.Position[1]=ai->st.opp->cy;
        theirBot.bel=.9; 
-       theirBot.dtpf=0;
    }
    
    if (ai->st.ball!=NULL)
@@ -705,7 +885,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
        fluffy.Position[0]=ai->st.ball->cx;
        fluffy.Position[1]=ai->st.ball->cy;
        fluffy.bel=.9; 
-       fluffy.dtpf=0;
    }
 
   }

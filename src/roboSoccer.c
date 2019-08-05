@@ -1,14 +1,70 @@
 /************************************************************************************
  CSC C85 - UTSC RoboSoccer
  
- Main - this sets up communications with the NXT, creates an AI data structure
+ Main - this sets up communications with the Lego bot, creates an AI data structure
         with the appropriate mode, and starts the image processing/AI main loop
 
-        You only need to modify this file to set up your NXT's hex ID. Other than
+        You only need to modify this file to set up your EV3's hex ID. Other than
         that you should *NOT* change anything here.
 
  roboSoccer.c - by Per Parker, Summer 2013
+ updated by F. Estrada, Aug 2019.
 ************************************************************************************/
+
+/***********************************************************
+ *  OVERVIEW of the whole process
+ * 
+ * roboSoccer.c
+ *  - This is the main() entry point for the robo soccer software
+ *      * it sets up a socket for communicating with the EV3
+ *      * It then starts the imageCapture loop
+ *      * Once started, the imageCapture loop takes over 
+ * 
+ *  imageCapture.c
+ *  Image Capture loop
+ *  - Sets up the image processing parameters (field location and
+ *    size, robot calibration, etc. See the handout for details)
+ *  - Once the corners of the playfield have been set up, it 
+ *    processes each input frame to extract blobs and compute
+ *    blob parameters. See the handout for instructions on how
+ *    to fine-tune the camera parameters and the image capture
+ *    loop thresholds to make the blob detection as good as possible!
+ *    (this is ESSENTIAL for you to learn - crappy blobs->toast)
+ *  - It processes input from the keyboard so you can 
+ *    * Capture corners of the playfield
+ *    * Do robot calibration
+ *    * Toggle the AI on/off
+ *    * Reset the bot (all stop!)
+ *    * Manual control of the bot
+ *  - Calls the AI once each frame to do its job - This works
+ *    because the image capture loop has one AI data structure
+ *    variable (aptly called 'skynet'. Look for it, and make
+ *    sure you understand what it stores. You can also look
+ *    in the image capture code and see when/how this is used
+ *    to call your AI routines.
+ *  - The imageCapture loop is in charge until the program
+ *    exits!
+ * 
+ *  roboAI.c
+ *  - This is where you will do most of your work, your AI
+ *    state machine will be there, as will be any code that
+ *    you implement to handle robot movement and control
+ *  - The code here is called by the image capture loop, 
+ *    once per frame, with the current values for any
+ *    detected blobs.
+ *  - The AI data structure has a display list that you can
+ *    use to add graphical objects and markers you want the
+ *    image capture loop to display on-screen. Use this to
+ *    debug and test your AI routines (e.g. to plot the
+ *    location you want your bot to go, to show directions
+ *    of motion, to show the motion plan you want to
+ *    carry out, etc.).
+ *  
+ *  Be careful to understand the flow of program execution as
+ *  described above! you need to understand it so you know what
+ *  is happening at different points in time, and where it is
+ *  that something may have gone wrong.
+ *************************************************************/
 
 #include "imagecapture/imageCapture.h"
 #include <stdio.h>
