@@ -117,7 +117,7 @@ configure:3532: gcc -c -g  conftest.c >&5
 configure:3532: $? = 0
 configure:3573: result: yes
 configure:3590: checking for gcc option to accept ISO C89
-configure:3653: gcc  -c -g -O2  conftest.c >&5
+configure:3653: gcc  -c -g -O2 -fopenmp  conftest.c >&5
 configure:3653: $? = 0
 configure:3666: result: none needed
 configure:3691: checking whether gcc understands -c and -o together
@@ -135,38 +135,38 @@ configure:3968: result: gawk
 configure:3980: checking whether ln -s works
 configure:3984: result: yes
 configure:3994: checking for glEnable in -lGL
-configure:4019: gcc -o conftest -g -O2   conftest.c -lGL   >&5
+configure:4019: gcc -o conftest -g -O2 -fopenmp   conftest.c -lGL   >&5
 configure:4019: $? = 0
 configure:4028: result: yes
 configure:4039: checking for gluBeginTrim in -lGLU
-configure:4064: gcc -o conftest -g -O2   conftest.c -lGLU  -lGL  >&5
+configure:4064: gcc -o conftest -g -O2 -fopenmp   conftest.c -lGLU  -lGL  >&5
 configure:4064: $? = 0
 configure:4073: result: yes
 configure:4084: checking for SDL_Init in -lSDL
-configure:4109: gcc -o conftest -g -O2   conftest.c -lSDL  -lGLU -lGL  >&5
+configure:4109: gcc -o conftest -g -O2 -fopenmp   conftest.c -lSDL  -lGLU -lGL  >&5
 configure:4109: $? = 0
 configure:4118: result: yes
 configure:4129: checking for glutInit in -lglut
-configure:4154: gcc -o conftest -g -O2   conftest.c -lglut  -lSDL -lGLU -lGL  >&5
+configure:4154: gcc -o conftest -g -O2 -fopenmp   conftest.c -lglut  -lSDL -lGLU -lGL  >&5
 configure:4154: $? = 0
 configure:4163: result: yes
 configure:4174: checking for jpeg_CreateCompress in -ljpeg
-configure:4199: gcc -o conftest -g -O2   conftest.c -ljpeg  -lglut -lSDL -lGLU -lGL  >&5
+configure:4199: gcc -o conftest -g -O2 -fopenmp   conftest.c -ljpeg  -lglut -lSDL -lGLU -lGL  >&5
 configure:4199: $? = 0
 configure:4208: result: yes
 configure:4219: checking for baswap in -lbluetooth
-configure:4244: gcc -o conftest -g -O2   conftest.c -lbluetooth  -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:4244: gcc -o conftest -g -O2 -fopenmp   conftest.c -lbluetooth  -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:4244: $? = 0
 configure:4253: result: yes
 configure:4264: checking for sqrt in -lm
-configure:4289: gcc -o conftest -g -O2   conftest.c -lm  -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:4289: gcc -o conftest -g -O2 -fopenmp   conftest.c -lm  -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:24:6: warning: conflicting types for built-in function 'sqrt'
  char sqrt ();
       ^
 configure:4289: $? = 0
 configure:4298: result: yes
 configure:4309: checking for pthread_create in -lpthread
-configure:4334: gcc -o conftest -g -O2   conftest.c -lpthread  -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:4334: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread  -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:4334: $? = 0
 configure:4343: result: yes
 configure:4361: checking how to run the C preprocessor
@@ -226,7 +226,7 @@ configure: failed program was:
 configure:4494: checking for X
 configure:4602: gcc -E  conftest.c
 configure:4602: $? = 0
-configure:4633: gcc -o conftest -g -O2   conftest.c -lX11 -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:4633: gcc -o conftest -g -O2 -fopenmp   conftest.c -lX11 -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:4633: $? = 0
 configure:4683: result: libraries , headers 
 configure:4687: checking for grep that handles long lines and -e
@@ -234,51 +234,51 @@ configure:4745: result: /bin/grep
 configure:4750: checking for egrep
 configure:4812: result: /bin/grep -E
 configure:4817: checking for ANSI C header files
-configure:4837: gcc -c -g -O2  conftest.c >&5
+configure:4837: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4837: $? = 0
-configure:4910: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:4910: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:4910: $? = 0
 configure:4910: ./conftest
 configure:4910: $? = 0
 configure:4921: result: yes
 configure:4934: checking for sys/types.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for sys/stat.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for stdlib.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for string.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for memory.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for strings.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for inttypes.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for stdint.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4934: checking for unistd.h
-configure:4934: gcc -c -g -O2  conftest.c >&5
+configure:4934: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4934: $? = 0
 configure:4934: result: yes
 configure:4949: checking fcntl.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking fcntl.h presence
@@ -290,7 +290,7 @@ configure:4949: result: yes
 configure:4949: checking for inttypes.h
 configure:4949: result: yes
 configure:4949: checking limits.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking limits.h presence
@@ -300,7 +300,7 @@ configure:4949: result: yes
 configure:4949: checking for limits.h
 configure:4949: result: yes
 configure:4949: checking malloc.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking malloc.h presence
@@ -316,7 +316,7 @@ configure:4949: result: yes
 configure:4949: checking for string.h
 configure:4949: result: yes
 configure:4949: checking sys/file.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking sys/file.h presence
@@ -326,7 +326,7 @@ configure:4949: result: yes
 configure:4949: checking for sys/file.h
 configure:4949: result: yes
 configure:4949: checking sys/ioctl.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking sys/ioctl.h presence
@@ -336,7 +336,7 @@ configure:4949: result: yes
 configure:4949: checking for sys/ioctl.h
 configure:4949: result: yes
 configure:4949: checking sys/param.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking sys/param.h presence
@@ -346,7 +346,7 @@ configure:4949: result: yes
 configure:4949: checking for sys/param.h
 configure:4949: result: yes
 configure:4949: checking sys/socket.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking sys/socket.h presence
@@ -356,7 +356,7 @@ configure:4949: result: yes
 configure:4949: checking for sys/socket.h
 configure:4949: result: yes
 configure:4949: checking sys/time.h usability
-configure:4949: gcc -c -g -O2  conftest.c >&5
+configure:4949: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4949: $? = 0
 configure:4949: result: yes
 configure:4949: checking sys/time.h presence
@@ -368,13 +368,13 @@ configure:4949: result: yes
 configure:4949: checking for unistd.h
 configure:4949: result: yes
 configure:4961: checking for inline
-configure:4977: gcc -c -g -O2  conftest.c >&5
+configure:4977: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:4977: $? = 0
 configure:4985: result: inline
 configure:5003: checking for off_t
-configure:5003: gcc -c -g -O2  conftest.c >&5
+configure:5003: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5003: $? = 0
-configure:5003: gcc -c -g -O2  conftest.c >&5
+configure:5003: gcc -c -g -O2 -fopenmp  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:78:20: error: expected expression before ')' token
  if (sizeof ((off_t)))
@@ -465,9 +465,9 @@ configure: failed program was:
 | }
 configure:5003: result: yes
 configure:5014: checking for size_t
-configure:5014: gcc -c -g -O2  conftest.c >&5
+configure:5014: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5014: $? = 0
-configure:5014: gcc -c -g -O2  conftest.c >&5
+configure:5014: gcc -c -g -O2 -fopenmp  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:78:21: error: expected expression before ')' token
  if (sizeof ((size_t)))
@@ -558,9 +558,9 @@ configure: failed program was:
 | }
 configure:5014: result: yes
 configure:5025: checking for ssize_t
-configure:5025: gcc -c -g -O2  conftest.c >&5
+configure:5025: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5025: $? = 0
-configure:5025: gcc -c -g -O2  conftest.c >&5
+configure:5025: gcc -c -g -O2 -fopenmp  conftest.c >&5
 conftest.c: In function 'main':
 conftest.c:78:22: error: expected expression before ')' token
  if (sizeof ((ssize_t)))
@@ -651,25 +651,25 @@ configure: failed program was:
 | }
 configure:5025: result: yes
 configure:5036: checking for uint16_t
-configure:5036: gcc -c -g -O2  conftest.c >&5
+configure:5036: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5036: $? = 0
 configure:5036: result: yes
 configure:5048: checking for uint32_t
-configure:5048: gcc -c -g -O2  conftest.c >&5
+configure:5048: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5048: $? = 0
 configure:5048: result: yes
 configure:5062: checking for uint64_t
-configure:5062: gcc -c -g -O2  conftest.c >&5
+configure:5062: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5062: $? = 0
 configure:5062: result: yes
 configure:5076: checking for uint8_t
-configure:5076: gcc -c -g -O2  conftest.c >&5
+configure:5076: gcc -c -g -O2 -fopenmp  conftest.c >&5
 configure:5076: $? = 0
 configure:5076: result: yes
 configure:5094: checking for stdlib.h
 configure:5094: result: yes
 configure:5104: checking for GNU libc compatible malloc
-configure:5128: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5128: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5128: $? = 0
 configure:5128: ./conftest
 configure:5128: $? = 0
@@ -681,11 +681,11 @@ configure:5165: result: yes
 configure:5165: checking for sys/param.h
 configure:5165: result: yes
 configure:5185: checking for getpagesize
-configure:5185: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5185: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5185: $? = 0
 configure:5185: result: yes
 configure:5194: checking for working mmap
-configure:5341: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5341: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5341: $? = 0
 configure:5341: ./conftest
 configure:5341: $? = 0
@@ -693,64 +693,64 @@ configure:5351: result: yes
 configure:5362: checking for stdlib.h
 configure:5362: result: yes
 configure:5372: checking for GNU libc compatible realloc
-configure:5396: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5396: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5396: $? = 0
 configure:5396: ./conftest
 configure:5396: $? = 0
 configure:5406: result: yes
 configure:5430: checking for floor
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:74:6: warning: conflicting types for built-in function 'floor'
  char floor ();
       ^
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for ftruncate
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for memset
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:76:6: warning: conflicting types for built-in function 'memset'
  char memset ();
       ^
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for pow
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:77:6: warning: conflicting types for built-in function 'pow'
  char pow ();
       ^
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for select
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for socket
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for sqrt
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:80:6: warning: conflicting types for built-in function 'sqrt'
  char sqrt ();
       ^
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for strdup
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:81:6: warning: conflicting types for built-in function 'strdup'
  char strdup ();
       ^
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for strerror
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 configure:5430: $? = 0
 configure:5430: result: yes
 configure:5430: checking for strncasecmp
-configure:5430: gcc -o conftest -g -O2   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
+configure:5430: gcc -o conftest -g -O2 -fopenmp   conftest.c -lpthread -lm -lbluetooth -ljpeg -lglut -lSDL -lGLU -lGL  >&5
 conftest.c:83:6: warning: conflicting types for built-in function 'strncasecmp'
  char strncasecmp ();
       ^
@@ -893,7 +893,7 @@ AUTOMAKE='automake-1.15'
 AWK='gawk'
 CC='gcc'
 CCDEPMODE='depmode=gcc3'
-CFLAGS='-g -O2'
+CFLAGS='-g -O2 -fopenmp'
 CPP='gcc -E'
 CPPFLAGS=''
 CYGPATH_W='echo'

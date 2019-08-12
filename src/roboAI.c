@@ -85,6 +85,50 @@ void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPo
     BT_motor_port_start(RIGHT_MOTOR, (char)roundl(PD));
     BT_motor_port_start(LEFT_MOTOR, (char)roundl(-PD));
 }
+
+int AB_spline(BotInfo myBot, double tx, double ty, double *vx, double *vy, int curState)
+{
+    /* Obtain a smooth trajectory from current bot position to
+     * target location [tx,ty] with the bot arriving at heading
+     * [vx,vy]
+     * 
+     * curState - should be either **3 or **5:
+     *               **3 - init spline, and determine initial
+     *                   action
+     *               **5 - Carry out spline traversal
+     * 
+     * The return value will be either **4 or **5:
+     *               **4 - Need to first do a PD rotation to [vx, vy]
+     *               **5 - Got spline and spline traversal is on-going
+     *
+     * We could directly update the FSM state here, but it's best ot have
+     * all the FSM updates happen in AI_main() - hence the return value.
+     */
+    
+    double a[4], b[4];
+    double basisMatrix[4][4];
+    double cVecx[4], cVecy[4];
+    double axx,axy,l;
+    
+    if (curState%3==3)
+    {
+        // Initialization, first things first - determine if we can
+        // build a spline from the current robot's heading or
+        // whether we need to rotate first.
+        axx=tx-myBot.Position[0];
+        axy=ty-myBot.Position[1];
+        l=sqrt((axx*axx)+(axy*axy));
+        // Need to scan for a suitable direction, start at 90 degrees
+        // pointing away from arrival vector, move toward 
+        // AB line, and compute the spline
+        // Check spline doesn't end up with bot on the border
+        // if ok, set the chosen direction in [vx, vy] and 
+        // trigger PD alignment, after which we do the traversal!
+        
+    }
+    
+}
+   
 /*************************************************************
  * End of the NEW STUFF
  * ***********************************************************/
@@ -95,7 +139,7 @@ void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPo
 struct displayList *addPoint(struct displayList *head, int x, int y, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
   if (newNode==NULL)
   {
     fprintf(stderr,"addPoint(): Out of memory!\n");
@@ -117,7 +161,7 @@ struct displayList *addPoint(struct displayList *head, int x, int y, double R, d
 struct displayList *addLine(struct displayList *head, int x1, int y1, int x2, int y2, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
   if (newNode==NULL)
   {
     fprintf(stderr,"addLine(): Out of memory!\n");
@@ -144,7 +188,7 @@ struct displayList *addVector(struct displayList *head, int x1, int y1, double d
   dx=dx/l;
   dy=dy/l;
   
-  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
   if (newNode==NULL)
   {
     fprintf(stderr,"addVector(): Out of memory!\n");
@@ -165,7 +209,7 @@ struct displayList *addVector(struct displayList *head, int x1, int y1, double d
 struct displayList *addCross(struct displayList *head, int x, int y, int length, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
   if (newNode==NULL)
   {
     fprintf(stderr,"addLine(): Out of memory!\n");
@@ -182,7 +226,7 @@ struct displayList *addCross(struct displayList *head, int x, int y, int length,
   newNode->next=head;
   head=newNode;
 
-  newNode=(struct displayList *)malloc(1*sizeof(struct displayList));
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
   if (newNode==NULL)
   {
     fprintf(stderr,"addLine(): Out of memory!\n");
@@ -219,17 +263,6 @@ struct displayList *clearDP(struct displayList *head)
 /*************************************************************
  * Blob identification and tracking
  * ***********************************************************/
-void clear_motion_flags(struct RoboAI *ai)
-{
- // Reset all motion flags. See roboAI.h for what each flag represents
- // *You may or may not want to use these*
- ai->st.mv_fwd=0; 
- ai->st.mv_back=0;
- ai->st.mv_bl=0;
- ai->st.mv_br=0;
- ai->st.mv_fl=0;
- ai->st.mv_fr=0;
-}
 
 struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
 {
@@ -342,8 +375,12 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
  // - Position
  // - Velocity vector. Not valid while rotating, but possibly valid
  //   while turning.
- // - Heading (a unit vector in the direction of motion). Not valid
+ // - Motion direction vector. Not valid
  //   while rotating - possibly valid while turning
+ // - Heading direction - vector obtained from the blob shape, it is
+ //   correct up to a factor of (-1) (i.e. it may point backward w.r.t.
+ //   the direction your bot is facing). This vector remains valid
+ //   under rotation.
  // - Pointers to the blob data structure for each agent
  //
  // This function will update the blob data structure with the velocity
@@ -359,11 +396,6 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
  // adjust for perspective projection error. See the handout on how
  // to perform the calibration process.
  //
- // Note that the blob data
- // structure itself contains another useful vector with the blob
- // orientation (obtained directly from the blob shape, valid at all
- // times even under rotation, but can be pointing backward!)
- //
  // This function receives a pointer to the robot's AI data structure,
  // and a list of blobs.
  //
@@ -373,7 +405,6 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
 
  struct blob *p;
  double mg,vx,vy,pink,doff,dmin,dmax,adj;
- double NOISE_VAR=5;
 
  // Reset ID flags
  ai->st.ballID=0;
@@ -393,12 +424,14 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
   ai->st.bvy=p->cy-ai->st.old_bcy;
   ai->st.ball->vx=ai->st.bvx;
   ai->st.ball->vy=ai->st.bvy;
+  ai->st.bdx=p->dx;
+  ai->st.bdy=p->dy;
 
   ai->st.old_bcx=p->cx; 		// Update old position for next frame's computation
   ai->st.old_bcy=p->cy;
   ai->st.ball->idtype=3;
 
-  vx=ai->st.bvx;			// Compute heading direction (normalized motion vector)
+  vx=ai->st.bvx;			// Compute motion direction (normalized motion vector)
   vy=ai->st.bvy;
   mg=sqrt((vx*vx)+(vy*vy));
   if (mg>NOISE_VAR)			// Update heading vector if meaningful motion detected
@@ -407,6 +440,11 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
    vy/=mg;
    ai->st.bmx=vx;
    ai->st.bmy=vy;
+  }
+  else
+  {
+    ai->st.bmx=0;
+    ai->st.bmy=0;
   }
   ai->st.ball->mx=ai->st.bmx;
   ai->st.ball->my=ai->st.bmy;
@@ -439,14 +477,13 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
   ai->st.svy=p->cy-ai->st.old_scy;
   ai->st.self->vx=ai->st.svx;
   ai->st.self->vy=ai->st.svy;
-
-  ai->st.old_scx=p->cx; 
-  ai->st.old_scy=p->cy;
-  ai->st.self->idtype=1;
+  ai->st.sdx=p->dx;
+  ai->st.sdy=p->dy;
 
   vx=ai->st.svx;
   vy=ai->st.svy;
   mg=sqrt((vx*vx)+(vy*vy));
+  printf("----------------------------------------------------------->    Track agents(): d=[%lf, %lf], [x,y]=[%3.3lf, %3.3lf], old=[%3.3lf, %3.3lf], v=[%2.3lf, %2.3lf], motion=[%2.3lf, %2.3lf]\n",ai->st.sdx,ai->st.sdy,ai->st.self->cx,ai->st.self->cy,ai->st.old_scx,ai->st.old_scy,vx,vy,vx/mg,vy/mg);
   if (mg>NOISE_VAR)
   {
    vx/=mg;
@@ -454,9 +491,16 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
    ai->st.smx=vx;
    ai->st.smy=vy;
   }
-
+  else
+  {
+   ai->st.smx=0;
+   ai->st.smy=0;
+  }
   ai->st.self->mx=ai->st.smx;
   ai->st.self->my=ai->st.smy;
+  ai->st.old_scx=p->cx; 
+  ai->st.old_scy=p->cy;
+  ai->st.self->idtype=1;
  }
  else ai->st.self=NULL;
 
@@ -483,6 +527,8 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
   ai->st.ovy=p->cy-ai->st.old_ocy;
   ai->st.opp->vx=ai->st.ovx;
   ai->st.opp->vy=ai->st.ovy;
+  ai->st.odx=p->dx;
+  ai->st.ody=p->dy;
 
   ai->st.old_ocx=p->cx; 
   ai->st.old_ocy=p->cy;
@@ -497,6 +543,11 @@ void track_agents(struct RoboAI *ai, struct blob *blobs)
    vy/=mg;
    ai->st.omx=vx;
    ai->st.omy=vy;
+  }
+  else
+  {
+   ai->st.omx=0;
+   ai->st.omy=0;
   }
   ai->st.opp->mx=ai->st.omx;
   ai->st.opp->my=ai->st.omy;
@@ -625,10 +676,15 @@ int setupAI(int mode, int own_col, struct RoboAI *ai)
  ai->st.svy=0;
  ai->st.ovx=0;
  ai->st.ovy=0;
+ ai->st.sdx=0;
+ ai->st.sdy=0;
+ ai->st.odx=0;
+ ai->st.ody=0;
+ ai->st.bdx=0;
+ ai->st.bdy=0;
  ai->st.selfID=0;
  ai->st.oppID=0;
  ai->st.ballID=0;
- clear_motion_flags(ai);
  ai->DPhead=NULL;
  fprintf(stderr,"Initialized!\n");
 
@@ -695,21 +751,43 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   't' - Toggle the AI routine (i.e. start/stop calls to AI_main() ).
   'o' - Robot immediate all-stop! - do not allow your EV3 to get damaged!
 
+   IMPORTANT NOTE: There are TWO sources of information about the 
+                   location/parameters of each agent
+                   1) The 'blob' data structures from the imageCapture module
+                   2) The values in the 'ai' data structure.
+                      The 'blob' data is incomplete and changes frame to frame
+                      The 'ai' data should be more robust and stable
+                      BUT in order for the 'ai' data to be updated, you
+                      must call the function 'track_agents()' in your code
+                      after eah frame!
+                      
+    DATA STRUCTURE ORGANIZATION:
+
+    'RoboAI' data structure 'ai'
+         \    \    \   \--- calibrate()  (pointer to AI_clibrate() )
+          \    \    \--- runAI()  (pointer to the function AI_main() )
+           \    \------ Display List head pointer 
+            \_________ 'ai_data' data structure 'st'
+                         \  \   \------- AI state variable and other flags
+                          \  \---------- pointers to 3 'blob' data structures
+                           \             (one per agent)
+                            \------------ parameters for the 3 agents
+                              
   ** Do not change the behaviour of the robot ID routine **
  **************************************************************************/
 
   static BotInfo myBot;
   static BotInfo theirBot;
   static BotInfo fluffy;
-  static double ux,uy,len;
+  static double ux,uy,len,mmx,mmy;
   double angDif;
+  char line[1024];
   static int count=0;
   static double old_dx=0, old_dy=0;
   
   // change to the ports representing the left and right motors in YOUR robot
   char lport=MOTOR_A;
   char rport=MOTOR_B;
-
   
   /*****************************************************
    * Working PD controller for alignment with a target vector
@@ -719,33 +797,40 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    * is defined in roboAI.h.
    * - Would like to: Use smoothed direction when there
    *   is indication we got a nonsense reading
-   * - Assigned to states **1 and **2
+   * - Assigned to states **1, **2, **3. **1 is initialization
+   *   **2 is ongoing rotation, **3 is verification
    * ***************************************************/
 
-  if (ai->st.state%1==0||ai->st.state%2==0)                         // States **1 and **2 are for PD alignment
-  {                                                                 // **1 requests initialization of alignment
-     if (ai->st.self!=NULL)                                         // routine, **2 means robot is turning to align
+  if (ai->st.state==101||ai->st.state==1||ai->st.state==201||\
+      ai->st.state==102||ai->st.state==2||ai->st.state==202||\
+      ai->st.state==103||ai->st.state==3||ai->st.state==203)
+  {                                                                 
+     track_agents(ai,blobs);                                        // Make sure to update the 'ai' data
+     
+     if (ai->st.self!=NULL)                                         
      {
       // Update robot heading
-      angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
+      myBot.Heading[0]=ai->st.sdx;
+      myBot.Heading[1]=ai->st.sdy;
+
+      angDif=dottie(ai->st.sdx,ai->st.sdy,old_dx,old_dy);
       if (angDif<0)
       {
-       myBot.Heading[0]=-ai->st.self->dx;
-       myBot.Heading[1]=-ai->st.self->dy;
+        // Handle flips of the direction vector by comparing sign with the previous one.
+        // This only works as long as rotation is less than PI/2 radians per frame!
+        // Maybe here we want to add blending with a smoothed direction vector from previous frames?
+        ai->st.sdx*=-1;
+        ai->st.sdy*=-1;
+        ai->st.self->dx*=-1;
+        ai->st.self->dy*=-1;
+        myBot.Heading[0]=ai->st.sdx;
+        myBot.Heading[1]=ai->st.sdy;
       }
-      else
-      {
-       myBot.Heading[0]=ai->st.self->dx;
-       myBot.Heading[1]=ai->st.self->dy;
-      }
-      angDif=dottie(ai->st.self->dx,ai->st.self->dy,old_dx,old_dy);
-      if (fabs(angDif)<.8) 
-      {
-          myBot.Heading[0]=old_dx;
-          myBot.Heading[1]=old_dy;
-      }
-          
-      // Match direction
+      angDif=dottie(ai->st.sdx,ai->st.sdy,old_dx,old_dy);
+      fprintf(stderr,"Rotation rate: %lf rad./frame\n",acos(angDif));
+      fprintf(stderr,"+++ Heading=[%lf, %lf], old heading=[%lf %lf], motion=[%lf, %lf], U=[%lf,%lf], dotHU=%lf\n",myBot.Heading[0],myBot.Heading[1],old_dx,old_dy,ai->st.smx, ai->st.smy, ux,uy,angDif);
+      
+      // Get rotation direction from user (to be replaced by AI computed direction)
       if (ai->st.state==1)
       {         
           fprintf(stderr,"Please enter desired direction ux:\n");
@@ -760,41 +845,76 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
           fprintf(stderr,"Desired direction vector is [%lf, %lf], heading is [%lf, %lf]\n",ux,uy,myBot.Heading[0],myBot.Heading[1]);
       }
       angDif=dottie(ux,uy,myBot.Heading[0],myBot.Heading[1]);
-      printf("Current parameters: blob=[%lf %lf], heading=[%lf, %lf], old heading=[%lf %lf], dot_blobHead=%lf, dot_newOld=%lf, angBlob=%lf, angHead=%lf\n",ai->st.self->dx, ai->st.self->dy,myBot.Heading[0],myBot.Heading[1],old_dx,old_dy,dottie(ai->st.self->dx,ai->st.self->dy,myBot.Heading[0],myBot.Heading[1]),dottie(myBot.Heading[0],myBot.Heading[1],old_dx,old_dy),atan2(ai->st.self->dy,ai->st.self->dx),atan2(myBot.Heading[1],myBot.Heading[0]));
-//      fprintf(stderr,"Cosine of angle difference is: %lf\n",angDif);
       angDif=acos(angDif);
-//      fprintf(stderr,"Actual angular difference: %lf\n",angDif);
-      count++;
-      if (count>150)
-      {
-          ai->st.state=500;
-          BT_all_stop(0);
-          count=0;
-      }
      
       // Display target direction and current heading
-      if (ai->DPhead!=NULL) ai->DPhead=clearDP(ai->DPhead);
-      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],myBot.Heading[0],myBot.Heading[1],25,0,128,255);
-      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],ux,uy,25,64,255,0);
+//      if (ai->DPhead!=NULL) ai->DPhead=clearDP(ai->DPhead);
+//      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],myBot.Heading[0],myBot.Heading[1],25,0,128,255);
+//      ai->DPhead=addVector(ai->DPhead,myBot.Position[0],myBot.Position[1],ux,uy,25,64,255,0);
       
-      if ((ai->st.state%1==0)&&angDif>ANGLE_DIFF_THRESH)    // Not aligned - go to state **2
+      if ((ai->st.state==1||ai->st.state==101||ai->st.state==201)&&angDif>ANGLE_DIFF_THRESH)    // Not aligned - go to state **2
           ai->st.state++;                        
              
-      if (ai->st.state%2==0)    // Alignment is ongoing
+      if (ai->st.state==2||ai->st.state==102||ai->st.state==202)    // Alignment is ongoing
       {
          if (angDif>ANGLE_DIFF_THRESH)
          {
-             PD_align(myBot,ux,uy,75,15);
+             PD_align(myBot,ux,uy,80,15);
          }
          else
          {
-             // Aligned - go back to state **1
-             ai->st.state--;
+             // Aligned - or so we think. Time to check it against real heading...
+             // (because sometimes we lose the sign)
              BT_all_stop(0);
-             clear_motion_flags(ai);
              count=0;
+             mmx=0;
+             mmy=0;
+             ai->st.state++;        // GO to state **3 - verification step
          }
       }
+      
+      if (ai->st.state==3||ai->st.state==103||ai->st.state==203)
+      {
+          if (count<2) 
+          {
+            // Do nothing for a couple frames - we should not be moving, so reset
+            // motion parameters
+            myBot.Motion[0]=0;
+            myBot.Motion[1]=0;
+            myBot.Velocity[0]=0;
+            myBot.Velocity[1]=0;
+            ai->st.smx=0;
+            ai->st.smy=0;
+          }
+          else if (count<4) 
+          {
+            BT_drive(LEFT_MOTOR, RIGHT_MOTOR, 40);
+            mmx+=ai->st.smx;
+            mmy+=ai->st.smy;
+            printf("*** Adding %lf, %lf ---> %lf, %lf\n",ai->st.smx,ai->st.smy,mmx,mmy);
+          }
+          else 
+          {
+            BT_all_stop(0);
+            myBot.Heading[0]=ai->st.sdx;
+            myBot.Heading[1]=ai->st.sdy;
+            len=sqrt((mmx*mmx)+(mmy*mmy));
+            myBot.Motion[0]=mmx/len;
+            myBot.Motion[1]=mmy/len;
+            if (dottie(myBot.Heading[0],myBot.Heading[1],myBot.Motion[0],myBot.Motion[1])<0)
+            {
+                  myBot.Heading[0]=-myBot.Heading[0];
+                  myBot.Heading[1]=-myBot.Heading[1];
+            }
+            if (dottie(myBot.Heading[0],myBot.Heading[1],ux,uy)<0)
+                ai->st.state-=1;                          // Dang it! we're facing the wrong way!
+            else
+                ai->st.state++;                           // All good - go to state 4.
+            fprintf(stderr,"Final values, heading=%lf,%lf, motion=%lf, %lf, U=%lf, %lf, state=%d\n",myBot.Heading[0],myBot.Heading[1],myBot.Motion[0],myBot.Motion[1],ux,uy,ai->st.state);
+            gets(&line[0]);
+          }
+          count++;
+      }      
       old_dx=myBot.Heading[0];
       old_dy=myBot.Heading[1];
      }		// End if (ai->st.self!=NULL)
@@ -833,42 +953,45 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {				// if robot identification is successful.
    if (ai->st.self->cx>=512) ai->st.side=1; else ai->st.side=0;
    BT_all_stop(0);
-   clear_motion_flags(ai);
-   fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], blob direction=[%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.self->mx,ai->st.self->my,ai->st.self->dx,ai->st.self->dy,ai->st.state);
+   fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], blob direction=[%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.smx,ai->st.smy,ai->st.sdx,ai->st.sdy,ai->st.state);
    
    if (ai->st.self!=NULL)
    {
-       myBot.Motion[0]=ai->st.self->mx;
-       myBot.Motion[1]=ai->st.self->my;
-       myBot.Velocity[0]=ai->st.self->vx;
-       myBot.Velocity[1]=ai->st.self->vy;
-       if (((ai->st.self->mx*ai->st.self->dx)+(ai->st.self->my*ai->st.self->dy))<0)
+       myBot.Motion[0]=ai->st.smx;
+       myBot.Motion[1]=ai->st.smy;
+       myBot.Velocity[0]=ai->st.svx;
+       myBot.Velocity[1]=ai->st.svy;
+       if (((ai->st.smx*ai->st.sdx)+(ai->st.smy*ai->st.sdy))<0)
        {
            ai->st.self->dx*=-1.0;
            ai->st.self->dy*=-1.0;
+           ai->st.sdx*=-1;
+           ai->st.sdy*=-1;
        }
-       myBot.Heading[0]=ai->st.self->dx;
-       myBot.Heading[1]=ai->st.self->dy;
+       myBot.Heading[0]=ai->st.sdx;
+       myBot.Heading[1]=ai->st.sdy;
        myBot.Position[0]=ai->st.self->cx;
        myBot.Position[1]=ai->st.self->cy;
        myBot.bel=.9; 
-       old_dx=ai->st.self->dx;
-       old_dy=ai->st.self->dy;
+       old_dx=ai->st.sdx;
+       old_dy=ai->st.sdy;
    }
   
    if (ai->st.opp!=NULL)
    {
-       theirBot.Motion[0]=ai->st.opp->mx;
-       theirBot.Motion[1]=ai->st.opp->my;
-       theirBot.Velocity[0]=ai->st.opp->vx;
-       theirBot.Velocity[1]=ai->st.opp->vy;
-       if (((ai->st.opp->mx*ai->st.opp->dx)+(ai->st.opp->my*ai->st.opp->dy))<0)
+       theirBot.Motion[0]=ai->st.omx;
+       theirBot.Motion[1]=ai->st.omy;
+       theirBot.Velocity[0]=ai->st.ovx;
+       theirBot.Velocity[1]=ai->st.ovy;
+       if (((ai->st.omx*ai->st.odx)+(ai->st.omy*ai->st.ody))<0)
        {
            ai->st.opp->dx*=-1;
            ai->st.opp->dy*=-1;
+           ai->st.odx*=-1;
+           ai->st.ody*=-1;
        }       
-       theirBot.Heading[0]=ai->st.opp->dx;
-       theirBot.Heading[1]=ai->st.opp->dy;
+       theirBot.Heading[0]=ai->st.odx;
+       theirBot.Heading[1]=ai->st.ody;
        theirBot.Position[0]=ai->st.opp->cx;
        theirBot.Position[1]=ai->st.opp->cy;
        theirBot.bel=.9; 
@@ -876,16 +999,17 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    
    if (ai->st.ball!=NULL)
    {
-       fluffy.Motion[0]=ai->st.ball->mx;
-       fluffy.Motion[1]=ai->st.ball->my;
-       fluffy.Velocity[0]=ai->st.ball->vx;
-       fluffy.Velocity[1]=ai->st.ball->vy;
-       fluffy.Heading[0]=ai->st.ball->dx;
-       fluffy.Heading[1]=ai->st.ball->dy;
+       fluffy.Motion[0]=ai->st.bmx;
+       fluffy.Motion[1]=ai->st.bmy;
+       fluffy.Velocity[0]=ai->st.bvx;
+       fluffy.Velocity[1]=ai->st.bvy;
+       fluffy.Heading[0]=ai->st.bdx;
+       fluffy.Heading[1]=ai->st.bdy;
        fluffy.Position[0]=ai->st.ball->cx;
        fluffy.Position[1]=ai->st.ball->cy;
        fluffy.bel=.9; 
    }
+   fprintf(stderr,"myBot: Position: (%lf,%lf), Heading: [%lf, %lf], Blob direction=[%lf, %lf], Motion=[%lf, %lf], old=[%lf, %lf]\n",myBot.Position[0],myBot.Position[1],myBot.Heading[0],myBot.Heading[1],ai->st.sdx,ai->st.sdy,myBot.Motion[0],myBot.Motion[1],old_dx,old_dy);
 
   }
   
@@ -912,8 +1036,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    state transitions and with calling the appropriate function based on what
    the bot is supposed to be doing.
   *****************************************************************************/
-  fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+//  fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
+//  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
  }
 
 }

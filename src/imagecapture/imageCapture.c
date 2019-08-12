@@ -307,7 +307,7 @@ void FrameGrabLoop(void)
       }
       else
       {
-        drawLine(dp->x1,dp->y1,dp->x2,dp->y2,1,dp->R,dp->G,dp->B,blobIm);
+        drawLine(dp->x1,dp->y1,dp->x2-dp->x1,dp->y2-dp->y1,1,dp->R,dp->G,dp->B,blobIm);
       }
       dp=dp->next;
     }
@@ -908,42 +908,42 @@ struct image *blobDetect2(unsigned char *fgIm, int sx, int sy, struct blob **blo
       }
      }
     }	// End while
-    if (pixcnt>250)
+    
+    if (pixcnt>250)         // Ignore blobs smaller than 250 pixels in size
     {
      // If the size of the blob is greater than a small threshold, inset it in the
      // blob list and fill-out the blob data structure.
-     Ra/=pixcnt;
+     Ra/=pixcnt;            // Average RGB values
      Ga/=pixcnt;
      Ba/=pixcnt;
-     xc/=pixcnt;
+     xc/=pixcnt;            // Centroid of the blob
      yc/=pixcnt;
-     Hacc/=pixcnt;
+     Hacc/=pixcnt;          // Average HSV values
      Sacc/=pixcnt;
      Vacc/=pixcnt;
      bl=(struct blob *)calloc(1,sizeof(struct blob));
-     bl->label=lab;
-     memset(&(bl->cx),0,5*sizeof(double));
-     memset(&(bl->cy),0,5*sizeof(double));
-     memset(&(bl->vx),0,5*sizeof(double));
-     memset(&(bl->vy),0,5*sizeof(double));
+     bl->label=lab;         // Label for this blob (a unique int ID, not related to color)
+     bl->vx=0;              // Velocity and motion vectors *THESE ARE UPDATED BY THE AI*
+     bl->vy=0;
      bl->mx=0;
      bl->my=0;
-     bl->cx=xc;
+     bl->cx=xc;             // Blob center location
      bl->cy=yc;
-     bl->size=pixcnt;
-     bl->x1=mix;
+     bl->size=pixcnt;       // Size in pixels
+     bl->x1=mix;            // Bounding box (top-left -> bottom-right)
      bl->y1=miy;
      bl->x2=mx;
      bl->y2=my;
-     bl->R=Ra;
+     bl->R=Ra;              // Blob RGB color
      bl->G=Ga;
      bl->B=Ba;
-     bl->H=Hacc;
+     bl->H=Hacc;            // Blob HSV color
      bl->S=Sacc;
      bl->V=Vacc;
-     bl->age=0;
      bl->next=NULL;
-     bl->idtype=0;
+     bl->idtype=0;          // Set by the AI to indicate if this blob is an agent, and which agent it is
+
+     // Insert into linked list of detected blobs.
      if (*(blob_list)==NULL) *(blob_list)=bl;
      else {bl->next=(*(blob_list))->next; (*(blob_list))->next=bl;}
     }

@@ -34,6 +34,7 @@
 #define AI_PENALTY 1    // Go score some goals!
 #define AI_CHASE 2 	// Kick the ball around and chase it!
 
+#define NOISE_VAR 5.0                     // Minimum amount of displacement considered NOT noise.
 #define ANGLE_DIFF_THRESH   0.077479    // Successful alignment threshold in Radians - About 4.7 degrees
 
 struct AI_data{
@@ -55,14 +56,6 @@ struct AI_data{
 
 	int state;		// Current AI state
 
-	// Motion flags	- ** These should be set by your own code, if you want to  use them **
-	int mv_fwd;		// moving forward
-	int mv_back;		// moving backward
-	int mv_bl;		// moving back while turning left
-	int mv_br;		// moving back while turning right	
-	int mv_fl;		// moving forward while turning left
-	int mv_fr;		// moving forward while turning right
-
 	// Object ID status for self, opponent, and ball. Just boolean 
         // values indicating whether blobs have been found for each of these
 	// entities.
@@ -75,19 +68,22 @@ struct AI_data{
 	struct blob *ball;		// Current ball blob
 	double old_bcx, old_bcy;	// Previous ball cx,cy
 	double bvx,bvy;			// Ball velocity vector
-	double bmx,bmy;			// Ball heading
+	double bmx,bmy;			// Ball motion vector
+	double bdx,bdy;                 // Ball heading direction (from blob shape)
 
 	// Self track data. Done separately each frame
         struct blob *self;		// Current self blob
 	double old_scx, old_scy;	// Previous self (cx,cy)
 	double svx,svy;			// Current self [vx vy]
-	double smx,smy;			// Self heading
+	double smx,smy;			// Self motion vector
+	double sdx,sdy;                 // Self heading direction (from blob shape)
 
 	// Opponent track data. Done separately each frame
         struct blob *opp;		// Current opponent blob
 	double old_ocx, old_ocy;	// Previous opponent (cx,cy)
 	double ovx,ovy;			// Current opponent [vx vy]
-	double omx,omy;			// Opponent heading
+	double omx,omy;			// Opponent motion vector
+	double odx,ody;                 // Opponent heading direction (from blob shape)
 };
 
 struct RoboAI {
@@ -136,7 +132,6 @@ void AI_calibrate(struct RoboAI *ai, struct blob *blobs);
 void id_bot(struct RoboAI *ai, struct blob *blobs);
 struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col);
 void track_agents(struct RoboAI *ai, struct blob *blobs);
-void clear_motion_flags(struct RoboAI *ai);
 
 // Display List functions
 // the AI data structure provides a way for you to add graphical markers on-screen,
@@ -171,5 +166,6 @@ typedef struct BotInfo
 double dottie(double vx, double vy, double ux, double uy);
 double crossie_sign(double vx, double vy, double ux, double uy);
 void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPower);
+int AB_spline(BotInfo myBot, double tx, double ty, double *vx, double *vy, int curState);
 
 #endif

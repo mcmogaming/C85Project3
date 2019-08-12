@@ -174,7 +174,7 @@ AUTOMAKE = automake-1.15
 AWK = gawk
 CC = g++
 CCDEPMODE = depmode=gcc3
-CFLAGS = -g -O2
+CFLAGS = -g -O2 -fopenmp
 CPP = gcc -E
 CPPFLAGS = 
 CYGPATH_W = echo

@@ -60,7 +60,7 @@
 
 #define PI 3.14159265354
 
-static const char version[] = "RoboSoccerEV3 V1.1.2019";
+static const char version[] = "RoboSoccerEV3 V1.2.2019";
 
 struct blob{
         int label;		// Label in the labels image
@@ -75,7 +75,6 @@ struct blob{
 	int x1,y1,x2,y2;	// Bounding box (top-left, bottom-right)
 	double R,G,B;		// Average colour of pixels in the blob
 	double H,S,V;           // HSV components of blob color
-        int age;		// Number of frames the blob has been tracked/not tracked
 	int idtype;		// Integer set to the id of this blob: 0->ball, 1->green bot, 2->red bot
 	struct blob *next;	// If needed for linked lists of blobs
         int updated;		// Update flag - used by the image processing loop - don't change it!
