@@ -32,13 +32,17 @@
 
 #define NEG 1
 
-#define FIND_D 3
-#define FOUND_D 2
-#define ROTATE_TO_BALL 1
-#define MOVE_TO_BALL 4
-#define KICK_BALL 5
-#define RESET_KICK 6
-#define DO_NOTHING 7
+#define PROTATE_TO_BALL 101
+#define PMOVE_TO_BALL 102
+#define PKICK_BALL 103
+#define PRESET_KICK 104
+#define PDO_NOTHING 105
+
+#define CROTATE_TO_BALL 201
+#define CMOVE_TO_BALL 202
+#define CKICK_BALL 203
+#define CRESET_KICK 204
+#define CDO_NOTHING 205
 
 #define MOVEFORWARD 0
 #define TURNRIGHT 1
@@ -47,6 +51,7 @@
 #define BRAKE -1
 #define KICKING 4
 #define RESETING_KICK 5 
+#define MOVE_AND_KICKING 6
 
 #define D_BOUND 0 //The bounding box for reseting direction vector
 #define BUFFER_SIZE 3
@@ -59,7 +64,8 @@
 #define X 0
 #define Y 1
 
-#define BALL_BOUND 100
+#define BALL_BOUND_SLOW 250
+#define BALL_BOUND 200
 
 //These track the move commands given to the bot, as not generate duplicate commands
 int curmove = -1;
@@ -731,6 +737,26 @@ int kickBall(){
   return 1;
 }
 
+int moveAndKickBall(){
+  if(curmove != MOVE_AND_KICKING){
+    curmove = MOVE_AND_KICKING;
+    timeKicking = 0;
+    BT_drive(LPORT,RPORT, 100);
+    printf("Accelerating 100");
+  }else{
+    if(timeKicking == 5){
+      BT_motor_port_start(KPORT, 100);
+    }
+    if(timeKicking > 10){
+      Brake();
+      return 0;
+    }
+  }
+  timeKicking++;
+  return 1;
+}
+
+
 int resetKick(){
   if(curmove != RESETING_KICK){
     BT_motor_port_start(KPORT, -100);
@@ -817,8 +843,22 @@ int moveToBall(double scx, double scy, double bcx, double bcy){
       return 0;  
     }
   }
-  moveForward(50);
+
+  if(fabs(scx - bcx) < BALL_BOUND_SLOW){
+    if(fabs(scy - bcy) < BALL_BOUND_SLOW){
+      moveForward(15);
+    }else{
+      moveForward(50);
+    }
+  }else{
+    moveForward(50);
+  }
+
   return 1;
+}
+
+int checkMoveToBall(RoboAI* ai){
+  
 }
 
 /**************************************************************************
@@ -1028,43 +1068,39 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   recordDirection(self->dx,self->dy);
   }
   switch(ai->st.state){
-    case FOUND_D:
-      ai->st.state+=1;
-    case FIND_D:
-      ai->st.state+=1;
-    case ROTATE_TO_BALL:
+    case CROTATE_TO_BALL:
       printf("\n[Rotating To Ball]\n");
       //Rotates
       printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
       printf("Average dx: %lf dy: %lf\n",TrueSelfDx,TrueSelfDy);
       if(rotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
-        ai->st.state = MOVE_TO_BALL;
+        ai->st.state = CMOVE_TO_BALL;
       }
       break;
-    case MOVE_TO_BALL:
+    case CMOVE_TO_BALL:
       printf("\n[Moving Forward]\n");
       if(checkRotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
-        ai->st.state = ROTATE_TO_BALL;
+        ai->st.state = CROTATE_TO_BALL;
       }
       if(moveToBall(ai->st.old_scx,ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy)){  
   
       }else{
-        ai->st.state = KICK_BALL;
+        ai->st.state = CKICK_BALL;
       }
       break;
-    case KICK_BALL:
+    case CKICK_BALL:
       printf("\n[Kicking Ball]\n");
-      if(kickBall() == 0){
-        ai->st.state = RESET_KICK;
+      if(moveAndKickBall() == 0){
+        ai->st.state = CRESET_KICK;
       }
       break;
-    case RESET_KICK:
+    case CRESET_KICK:
       printf("\n[Resting Kick]\n");
       if(resetKick() == 0){
-        ai->st.state = ROTATE_TO_BALL;
+        ai->st.state = CROTATE_TO_BALL;
       }
       break;
-    case DO_NOTHING:
+    case CDO_NOTHING:
       printf("[Doing Nothing]");
       break;
 
