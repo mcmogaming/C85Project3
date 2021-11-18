@@ -27,7 +27,7 @@
 #include <stdlib.h>
 
 //update to actual motors
-#define LEFT_MOTOR MOTOR_B
+#define LEFT_MOTOR MOTOR_D
 #define RIGHT_MOTOR MOTOR_A
 
 #define AI_SOCCER 0 	// Play soccer!
@@ -35,7 +35,12 @@
 #define AI_CHASE 2 	// Kick the ball around and chase it!
 
 #define NOISE_VAR 5.0                     // Minimum amount of displacement considered NOT noise.
-#define ANGLE_DIFF_THRESH   0.077479    // Successful alignment threshold in Radians - About 4.7 degrees
+#define ANGLE_DIFF_THRESH   0.077479      // Successful alignment threshold in Radians - About 4.7 degrees
+#define DRIVE_INIT_THRESH   0.043633      // About 10 degrees
+#define LOC_THRESHOLD       25            // Location accuracy error
+#define MIN_DRIVE_POWER     25
+#define MAX_DRIVE_POWER     100
+#define TURN_ADJ_POWER      25
 
 struct AI_data{
 	// This data structure is used to hold all data relevant to the state of the AI.
@@ -151,21 +156,5 @@ struct displayList *clearDP(struct displayList *head);
    Add headers for your own functions implementing the bot's soccer
    playing functionality below.
 *****************************************************************************/
-
-/**********************************************************************************
- * NEW STUFF for testing solution, Jul/Aug 2019
- * ********************************************************************************/
-typedef struct BotInfo
-{
-        double Heading[2];              // Unit vectors - this should be
-        double Motion[2];               // stable to flipping and noise
-        double Position[2];             // Position - NOT a vector
-        double Velocity[2];             // NOT a unit vector
-        double bel;                     // Belief in the current parameters        
-} BotInfo;
-double dottie(double vx, double vy, double ux, double uy);
-double crossie_sign(double vx, double vy, double ux, double uy);
-void PD_align(BotInfo myBot, double ux, double uy, double maxPower, double minPower);
-int AB_spline(BotInfo myBot, double tx, double ty, double *vx, double *vy, int curState);
 
 #endif

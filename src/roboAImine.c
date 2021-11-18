@@ -32,13 +32,13 @@
 
 #define NEG 1
 
-#define FIND_D 1
+#define FIND_D 3
 #define FOUND_D 2
-#define ROTATE_TO_BALL 3
+#define ROTATE_TO_BALL 1
 #define MOVE_TO_BALL 4
-#define FACE_GOAL 5
-#define KICK_BALL 6
-#define RESET_KICK 7
+#define KICK_BALL 5
+#define RESET_KICK 6
+#define DO_NOTHING 7
 
 #define MOVEFORWARD 0
 #define TURNRIGHT 1
@@ -59,24 +59,19 @@
 #define X 0
 #define Y 1
 
-#define BALL_BOUND 200
-
-#define X_MAX 1024
-#define Y_MAX 768
+#define BALL_BOUND 100
 
 //These track the move commands given to the bot, as not generate duplicate commands
 int curmove = -1;
 int curpower = -101;
 
-double direction_buffer [3][2]; 
+double direction_buffer [BUFFER_SIZE][2]; 
 double TrueSelfDx = 0;
 double TrueSelfDy = 0;
 double priorRotDx = 0;
 double priorRotDy = 0;
 double DirectionToBallx = 0;
 double DirectionToBally = 0;
-double DirectionToNetx = 0;
-double DirectionToNety = 0;
 
 int timeKicking = 0;
 
@@ -728,12 +723,12 @@ int kickBall(){
     curmove = KICKING;
     timeKicking = 0;
   }else{
-    timeKicking++;
     if(timeKicking > 10){
-      return 1;
+      return 0;
     }
   }
-  return 0;
+  timeKicking++;
+  return 1;
 }
 
 int resetKick(){
@@ -987,8 +982,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    state transitions and with calling the appropriate function based on what
    the bot is supposed to be doing.
   *****************************************************************************/
-  //fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+ //fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
+ track_agents(ai,blobs);		// Currently, does nothing but endlessly track
 
   // Fix Direction Vector
   struct blob* self = ai->st.self;
@@ -998,7 +993,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   
   //Checks if robot moved more than bounding box in last steps
   if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND < self->cx){
-    if( self->cy < ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND < self->cy ){
+   if( self->cy < ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND < self->cy ){
       if(dottie(b->sdx , b->sdy, b->smx, b->smy) < 0){
         TrueSelfDx = b->sdx;
         TrueSelfDy = b->sdy;
@@ -1006,7 +1001,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
         TrueSelfDx = -1*b->sdx;
         TrueSelfDy = -1*b->sdy;
       }
-    }
+  }
   }else{
     double orgdot = dottie(TrueSelfDx, TrueSelfDy, b->sdx, b->sdy);
     double negdot = dottie(TrueSelfDx, TrueSelfDy, -b->sdx, -b->sdy);
@@ -1017,89 +1012,64 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       TrueSelfDx = -b->sdx;
       TrueSelfDy = -b->sdy;      
     }
-    //Calculates Direction To Ball
-    DirectionToBallx = ai->st.old_bcx - ai->st.old_scx;
-    DirectionToBally = ai->st.old_bcy - ai->st.old_scy;
-    normalize(&DirectionToBallx, &DirectionToBally);
 
-    //Calculates Direction To Net
-    if (ai->st.side==0) { //Bot is scoring on right side, net is at 
-      DirectionToNetx = X_MAX - ai->st.old_scx;
-    } else if (ai->st.side==1) { //Bot is scoring on the left side
-      DirectionToNetx = 0-ai->st.old_scx;
-    } else {
-      printf("INVALID SIDE\n");
-    }
-    DirectionToNety = Y_MAX / 2;
 
-    normalize(&DirectionToNetx, &DirectionToBally);
+  //Calculates Direction To Ball
+  DirectionToBallx = ai->st.old_bcx - ai->st.old_scx;
+  DirectionToBally = ai->st.old_bcy - ai->st.old_scy;
+  normalize(&DirectionToBallx, &DirectionToBally);
 
-    //If it errors 
-    // if(TrueSelfDx == 0 && TrueSelfDy == 0){
-    //   TrueSelfDx = b->smx;
-    //   TrueSelfDy = b->smy;
-    // }
-      
-    recordDirection(self->dx,self->dy);
+  //If it errors 
+  // if(TrueSelfDx == 0 && TrueSelfDy == 0){
+  //   TrueSelfDx = b->smx;
+  //   TrueSelfDy = b->smy;
+  // }
+  
+  recordDirection(self->dx,self->dy);
   }
-    if (ai->st.state==0) return;
-    if (ai->st.state>=100) {
-      switch(ai->st.state%100){
-        //chase ball
-        case FOUND_D:
-          ai->st.state+=1;
-        case FIND_D:
-          ai->st.state+=1;
-        case ROTATE_TO_BALL:
-          printf("\n[Rotating To Ball]\n");
-          //Rotates
-          printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
-          printf("Average dx: %lf dy: %lf\n",TrueSelfDx,TrueSelfDy);
-          if(rotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
-            ai->st.state+=1;
-          }
-          break;
-        case MOVE_TO_BALL:
-          printf("\n[Moving Forward]\n");
-          if(checkRotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
-            ai->st.state = ROTATE_TO_BALL;
-          }
-          if(moveToBall(ai->st.old_scx,ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy)){  
-      
-          }else{
-            if (ai->st.state/100==2) {//penalty
-              ai->st.state=FACE_GOAL;
-            } else if (ai->st.state/100==3) {//chase ball
-              ai->st.state=KICK_BALL;
-            }
-          }
-          break;
-        case FACE_GOAL:
-          if(rotate(TrueSelfDx, TrueSelfDy, DirectionToNetx, DirectionToNety)){
-            ai->st.state+=1;
-          }
-          break;
-        case KICK_BALL:
-          printf("Kicking Ball");
-          if(kickBall() != 0){
-            ai->st.state = RESET_KICK;
-          }
-          if (ai->st.state/100==2) {//penalty
-            ai->st.state=0;
-          } else if (ai->st.state/100==3) {
-            ai->st.state+=1;
-          }
-          break;
-        case RESET_KICK:
-          printf("Reseting the Kick!");
-          if(resetKick() == 0){
-            ai->st.state -= 4; //Go back to rotate to ball
-          }
-          break;
-      }  
-    } else {
-      //play soccer mode
-    }
+  switch(ai->st.state){
+    case FOUND_D:
+      ai->st.state+=1;
+    case FIND_D:
+      ai->st.state+=1;
+    case ROTATE_TO_BALL:
+      printf("\n[Rotating To Ball]\n");
+      //Rotates
+      printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
+      printf("Average dx: %lf dy: %lf\n",TrueSelfDx,TrueSelfDy);
+      if(rotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
+        ai->st.state = MOVE_TO_BALL;
+      }
+      break;
+    case MOVE_TO_BALL:
+      printf("\n[Moving Forward]\n");
+      if(checkRotate(TrueSelfDx, TrueSelfDy, DirectionToBallx, DirectionToBally)){
+        ai->st.state = ROTATE_TO_BALL;
+      }
+      if(moveToBall(ai->st.old_scx,ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy)){  
+  
+      }else{
+        ai->st.state = KICK_BALL;
+      }
+      break;
+    case KICK_BALL:
+      printf("\n[Kicking Ball]\n");
+      if(kickBall() == 0){
+        ai->st.state = RESET_KICK;
+      }
+      break;
+    case RESET_KICK:
+      printf("\n[Resting Kick]\n");
+      if(resetKick() == 0){
+        ai->st.state = ROTATE_TO_BALL;
+      }
+      break;
+    case DO_NOTHING:
+      printf("[Doing Nothing]");
+      break;
+
+  }  
+
 
   }
 
@@ -1122,79 +1092,4 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
  there.
 **********************************************************************************/
 
-/*
-double *motions = getMotionVector(ai->st.smx, ai->st.smy);
-    ai->st.smx=motions[0];
-    ai->st.smy=motions[1];
 
-    motions = getMotionVector(ai->st.bmx, ai->st.bmy);
-    ai->st.bmx=motions[0];
-    ai->st.bmy=motions[1];
-
-    motions = getMotionVector(ai->st.omx, ai->st.omy);
-    ai->st.omx=motions[0];
-    ai->st.omy=motions[1];
-
-    if (ai->st.state/100==AI_PENALTY) {
-      //State 101=Rotate bot towards center
-      //State 102=Move forward towards center
-      //State 103=rotate bot to face center straight
-      //State 104=Move forward to ball
-      //State 105=Off course, rotate and move back correct direction
-      //State 106=Kick ball
-      printf("State: %d\n", ai->st.state);
-      if (ai->st.state==101) {
-        //it is left of ball and not facing the right
-        if (ai->st.old_scy<ai->st.old_bcy-10 && (ai->st.sdx<-5 || ai->st.sdx>5)) {
-          Turn_Right();
-        //it is right of ball and not facing the left
-        } else if (ai->st.old_scy<ai->st.old_bcy+10 && (ai->st.sdx<-10 || ai->st.sdx>10)) {
-          Turn_Left();
-        } else { //otherwise, you are facing the center
-          Brake();
-          ai->st.state=102;
-        }
-      } else if (ai->st.state==102) {
-        Move_Forward();
-
-        // if you have the same y as the ball, then stop
-        if (ai->st.old_scx > ai->st.old_bcx-7 && ai->st.old_scx < ai->st.old_bcx+7) {
-          ai->st.state=103;
-        }
-      }else if (ai->st.state==103) {
-        //Rotate to face ball
-        if (ai->st.sdx<5 && ai->st.sdy>-5) { //facing up/facing the ball
-          Brake();
-          ai->st.state=104;
-        }else if (ai->st.smx<0) { //not facing up and was going left --> facing left
-          Turn_Right();
-        } else { //not facing up and was going right --> facing right
-          Turn_Left();
-        }
-      } else if (ai->st.state==104) {
-        //facing the ball, move forward and check for swerve
-        Move_Forward();
-        if (ai->st.sdx>10 || ai->st.sdx<-10) { //swerve occured while moving towards ball
-          Brake();
-          ai->st.state=105;
-        } else if (ai->st.old_scx < ai->st.old_bcx+7 && ai->st.old_scx > ai->st.old_bcx-7 &&
-                  ai->st.old_scy < ai->st.old_bcy+7 && ai->st.old_scy > ai->st.old_bcy-7) {
-          ai->st.state=106;
-        }
-      } else if (ai->st.state==105) {
-        //adjust to go back to ball
-        if (ai->st.sdx>10) { //if you swerve to the right, go left
-          Turn_Left();
-        } else if (ai->st.sdx<-10) { //if you swerve to the left, go right
-          Turn_Right();
-        } else { //otherwise go back to state 104 (move forward to ball state)
-          Brake();
-          ai->st.state=104;
-        }
-      } else if (ai->st.state==106) {
-        Kick();
-        delay_ms(5000);
-        Brake();
-      }
-    }
-*/

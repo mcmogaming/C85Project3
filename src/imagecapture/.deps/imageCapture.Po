@@ -1,6 +1,6 @@
-roboAI.o: roboAI.c /usr/include/stdc-predef.h roboAI.h \
- imagecapture/imageCapture.h imagecapture/imageProc.h \
- /usr/include/stdio.h \
+imagecapture/imageCapture.o: imagecapture/imageCapture.c \
+ /usr/include/stdc-predef.h imagecapture/imageCapture.h \
+ imagecapture/imageProc.h /usr/include/stdio.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/x86_64-linux-gnu/sys/cdefs.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
@@ -182,8 +182,9 @@ roboAI.o: roboAI.c /usr/include/stdc-predef.h roboAI.h \
  /usr/include/linux/kernel.h /usr/include/linux/sysinfo.h \
  /usr/include/linux/const.h imagecapture/uvc_compat.h \
  /usr/include/linux/version.h imagecapture/dynctrl-logitech.h \
- API/btcomm.h /usr/include/getopt.h \
- /usr/include/x86_64-linux-gnu/bits/getopt_ext.h \
+ imagecapture/svdDynamic.h imagecapture/../roboAI.h \
+ imagecapture/../imagecapture/imageCapture.h imagecapture/../API/btcomm.h \
+ /usr/include/getopt.h /usr/include/x86_64-linux-gnu/bits/getopt_ext.h \
  /usr/include/x86_64-linux-gnu/sys/param.h \
  /usr/include/x86_64-linux-gnu/bits/param.h /usr/include/linux/param.h \
  /usr/include/x86_64-linux-gnu/asm/param.h \
@@ -201,11 +202,9 @@ roboAI.o: roboAI.c /usr/include/stdc-predef.h roboAI.h \
  /usr/include/bluetooth/bluetooth.h /usr/include/byteswap.h \
  /usr/include/netinet/in.h /usr/include/x86_64-linux-gnu/bits/in.h \
  /usr/include/bluetooth/hci.h /usr/include/bluetooth/hci_lib.h \
- /usr/include/bluetooth/rfcomm.h API/bytecodes.h
+ /usr/include/bluetooth/rfcomm.h imagecapture/../API/bytecodes.h
 
 /usr/include/stdc-predef.h:
-
-roboAI.h:
 
 imagecapture/imageCapture.h:
 
@@ -683,7 +682,13 @@ imagecapture/uvc_compat.h:
 
 imagecapture/dynctrl-logitech.h:
 
-API/btcomm.h:
+imagecapture/svdDynamic.h:
+
+imagecapture/../roboAI.h:
+
+imagecapture/../imagecapture/imageCapture.h:
+
+imagecapture/../API/btcomm.h:
 
 /usr/include/getopt.h:
 
@@ -733,4 +738,4 @@ API/btcomm.h:
 
 /usr/include/bluetooth/rfcomm.h:
 
-API/bytecodes.h:
+imagecapture/../API/bytecodes.h:
