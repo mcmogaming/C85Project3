@@ -28,7 +28,7 @@
   EV3 Version 1.1 - Updated Aug 2019 - F. Estrada
 ***************************************************************************/
 
-#include "roboAI.h" // <--- Look at this header file!
+#include "roboAI.h"			// <--- Look at this header file!
 
 #define NEG 1
 
@@ -57,7 +57,7 @@
 #define TURNLEFT 3
 #define BRAKE -1
 #define KICKING 4
-#define RESETING_KICK 5
+#define RESETING_KICK 5 
 #define MOVE_AND_KICKING 6
 
 #define D_BOUND 0 //The bounding box for reseting direction vector
@@ -91,8 +91,8 @@ int curpower = -101;
 int chasemode = 0;
 int frame = 0;
 
-double recSelfDirection[BUFFER_SIZE][2];
-double recSelfDirectionRad[BUFFER_SIZE][2];
+double recSelfDirection [BUFFER_SIZE][2];
+double recSelfDirectionRad [BUFFER_SIZE][2];
 
 double SelfDx = 0;
 double SelfDy = 0;
@@ -107,38 +107,36 @@ double KickPosY = 0;
 
 int kick_scale = 1;
 
+
 int timeKicking = 0;
 
 double dottie(double vx, double vy, double ux, double uy)
 {
-  // Returns the dot product of the two vectors [vx,vy] and [ux,uy]
-  return (vx * ux) + (vy * uy);
+ // Returns the dot product of the two vectors [vx,vy] and [ux,uy]
+ return (vx*ux)+(vy*uy);
 }
 
 double crossie_sign(double vx, double vy, double ux, double uy)
 {
-  // Returns the sign of the Z component of the cross product of
-  //   vectors [vx vy 0] and [ux uy 0]
-  // MIND THE ORDER! v rotating onto u.
-  // i   j   k
-  // vx  vy  0
-  // ux  uy  0
-
-  if ((vx * uy) - (ux * vy) < 0)
-    return -1;
-  else
-    return 1;
+ // Returns the sign of the Z component of the cross product of 
+ //   vectors [vx vy 0] and [ux uy 0]
+ // MIND THE ORDER! v rotating onto u.     
+ // i   j   k 
+ // vx  vy  0
+ // ux  uy  0
+    
+ if ((vx*uy)-(ux*vy)<0) return -1;
+ else return 1;
 }
 
 //Returns the length of the difference of two unit vectors [0,1] Used for PID
-double constrainted_abs_diff(double vx, double vy, double ux, double uy)
-{
-  printf("Len V: %lf Len U: %lf", sqrt(vx * vx + vy * vy), sqrt(ux * ux + uy * uy));
+double constrainted_abs_diff(double vx, double vy, double ux, double uy){ 
+  printf("Len V: %lf Len U: %lf", sqrt(vx*vx + vy*vy), sqrt(ux*ux + uy*uy));
   double dx, dy;
 
-  dx = fabs(ux - vx);
-  dy = fabs(uy - vy);
-  return sqrt(dx * dx + dy * dy) / 2;
+  dx = fabs(ux-vx);
+  dy = fabs(uy-vy);
+  return sqrt(dx*dx + dy*dy)/2;
 }
 
 /**************************************************************
@@ -152,121 +150,121 @@ double constrainted_abs_diff(double vx, double vy, double ux, double uy)
 struct displayList *addPoint(struct displayList *head, int x, int y, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode = (struct displayList *)calloc(1, sizeof(struct displayList));
-  if (newNode == NULL)
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
+  if (newNode==NULL)
   {
-    fprintf(stderr, "addPoint(): Out of memory!\n");
+    fprintf(stderr,"addPoint(): Out of memory!\n");
     return head;
   }
-  newNode->type = 0;
-  newNode->x1 = x;
-  newNode->y1 = y;
-  newNode->x2 = -1;
-  newNode->y2 = -1;
-  newNode->R = R;
-  newNode->G = G;
-  newNode->B = B;
-
-  newNode->next = head;
-  return (newNode);
+  newNode->type=0;
+  newNode->x1=x;
+  newNode->y1=y;
+  newNode->x2=-1;
+  newNode->y2=-1;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  
+  newNode->next=head;
+  return(newNode);
 }
 
 struct displayList *addLine(struct displayList *head, int x1, int y1, int x2, int y2, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode = (struct displayList *)calloc(1, sizeof(struct displayList));
-  if (newNode == NULL)
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
+  if (newNode==NULL)
   {
-    fprintf(stderr, "addLine(): Out of memory!\n");
+    fprintf(stderr,"addLine(): Out of memory!\n");
     return head;
   }
-  newNode->type = 1;
-  newNode->x1 = x1;
-  newNode->y1 = y1;
-  newNode->x2 = x2;
-  newNode->y2 = y2;
-  newNode->R = R;
-  newNode->G = G;
-  newNode->B = B;
-  newNode->next = head;
-  return (newNode);
+  newNode->type=1;
+  newNode->x1=x1;
+  newNode->y1=y1;
+  newNode->x2=x2;
+  newNode->y2=y2;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);  
 }
 
 struct displayList *addVector(struct displayList *head, int x1, int y1, double dx, double dy, int length, double R, double G, double B)
 {
   struct displayList *newNode;
   double l;
-
-  l = sqrt((dx * dx) + (dy * dy));
-  dx = dx / l;
-  dy = dy / l;
-
-  newNode = (struct displayList *)calloc(1, sizeof(struct displayList));
-  if (newNode == NULL)
+  
+  l=sqrt((dx*dx)+(dy*dy));
+  dx=dx/l;
+  dy=dy/l;
+  
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
+  if (newNode==NULL)
   {
-    fprintf(stderr, "addVector(): Out of memory!\n");
+    fprintf(stderr,"addVector(): Out of memory!\n");
     return head;
   }
-  newNode->type = 1;
-  newNode->x1 = x1;
-  newNode->y1 = y1;
-  newNode->x2 = x1 + (length * dx);
-  newNode->y2 = y1 + (length * dy);
-  newNode->R = R;
-  newNode->G = G;
-  newNode->B = B;
-  newNode->next = head;
-  return (newNode);
+  newNode->type=1;
+  newNode->x1=x1;
+  newNode->y1=y1;
+  newNode->x2=x1+(length*dx);
+  newNode->y2=y1+(length*dy);
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);
 }
 
 struct displayList *addCross(struct displayList *head, int x, int y, int length, double R, double G, double B)
 {
   struct displayList *newNode;
-  newNode = (struct displayList *)calloc(1, sizeof(struct displayList));
-  if (newNode == NULL)
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
+  if (newNode==NULL)
   {
-    fprintf(stderr, "addLine(): Out of memory!\n");
+    fprintf(stderr,"addLine(): Out of memory!\n");
     return head;
   }
-  newNode->type = 1;
-  newNode->x1 = x - length;
-  newNode->y1 = y;
-  newNode->x2 = x + length;
-  newNode->y2 = y;
-  newNode->R = R;
-  newNode->G = G;
-  newNode->B = B;
-  newNode->next = head;
-  head = newNode;
+  newNode->type=1;
+  newNode->x1=x-length;
+  newNode->y1=y;
+  newNode->x2=x+length;
+  newNode->y2=y;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  head=newNode;
 
-  newNode = (struct displayList *)calloc(1, sizeof(struct displayList));
-  if (newNode == NULL)
+  newNode=(struct displayList *)calloc(1,sizeof(struct displayList));
+  if (newNode==NULL)
   {
-    fprintf(stderr, "addLine(): Out of memory!\n");
+    fprintf(stderr,"addLine(): Out of memory!\n");
     return head;
   }
-  newNode->type = 1;
-  newNode->x1 = x;
-  newNode->y1 = y - length;
-  newNode->x2 = x;
-  newNode->y2 = y + length;
-  newNode->R = R;
-  newNode->G = G;
-  newNode->B = B;
-  newNode->next = head;
-  return (newNode);
+  newNode->type=1;
+  newNode->x1=x;
+  newNode->y1=y-length;
+  newNode->x2=x;
+  newNode->y2=y+length;
+  newNode->R=R;
+  newNode->G=G;
+  newNode->B=B;
+  newNode->next=head;
+  return(newNode);
 }
 
 struct displayList *clearDP(struct displayList *head)
 {
   struct displayList *q;
-  while (head)
+  while(head)
   {
-    q = head->next;
-    free(head);
-    head = q;
+      q=head->next;
+      free(head);
+      head=q;
   }
-  return (NULL);
+  return(NULL);
 }
 
 /**************************************************************
@@ -279,372 +277,349 @@ struct displayList *clearDP(struct displayList *head)
 
 struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
 {
-  /////////////////////////////////////////////////////////////////////////////
-  // This function looks for and identifies a blob with the specified colour.
-  // It uses the hue and saturation values computed for each blob and tries to
-  // select the blob that is most like the expected colour (red, green, or blue)
-  //
-  // If you find that tracking of blobs is not working as well as you'd like,
-  // you can try to improve the matching criteria used in this function.
-  // Remember you also have access to shape data and orientation axes for blobs.
-  //
-  // Inputs: The robot's AI data structure, a list of blobs, and a colour target:
-  // Colour parameter: 0 -> Red
-  //                   1 -> Yellow or Green (see below)
-  //                   2 -> Blue
-  // Returns: Pointer to the blob with the desired colour, or NULL if no such
-  // 	     blob can be found.
-  /////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////////////////////////////////////////////
+ // This function looks for and identifies a blob with the specified colour.
+ // It uses the hue and saturation values computed for each blob and tries to
+ // select the blob that is most like the expected colour (red, green, or blue)
+ //
+ // If you find that tracking of blobs is not working as well as you'd like,
+ // you can try to improve the matching criteria used in this function.
+ // Remember you also have access to shape data and orientation axes for blobs.
+ //
+ // Inputs: The robot's AI data structure, a list of blobs, and a colour target:
+ // Colour parameter: 0 -> Red
+ //                   1 -> Yellow or Green (see below)
+ //                   2 -> Blue
+ // Returns: Pointer to the blob with the desired colour, or NULL if no such
+ // 	     blob can be found.
+ /////////////////////////////////////////////////////////////////////////////
 
-  struct blob *p, *fnd;
-  double vr_x, vr_y, maxfit, mincos, dp;
-  double vb_x, vb_y, fit;
-  double maxsize = 0;
-  double maxgray;
-  int grayness;
-  int i;
+ struct blob *p, *fnd;
+ double vr_x,vr_y,maxfit,mincos,dp;
+ double vb_x,vb_y,fit;
+ double maxsize=0;
+ double maxgray;
+ int grayness;
+ int i;
+ 
+ maxfit=.025;                                             // Minimum fitness threshold
+ mincos=.65;                                              // Threshold on colour angle similarity
+ maxgray=.25;                                             // Maximum allowed difference in colour
+                                                          // to be considered gray-ish (as a percentage
+                                                          // of intensity)
 
-  maxfit = .025; // Minimum fitness threshold
-  mincos = .65;  // Threshold on colour angle similarity
-  maxgray = .25; // Maximum allowed difference in colour
-                 // to be considered gray-ish (as a percentage
-                 // of intensity)
-
-  // The reference colours here are in the HSV colourspace, we look at the hue component, which is a
-  // defined within a colour-wheel that contains all possible colours. Hence, the hue component
-  // is a value in [0 360] degrees, or [0 2*pi] radians, indicating the colour's location on the
-  // colour wheel. If we want to detect a different colour, all we need to do is figure out its
-  // location in the colour wheel and then set the angles below (in radians) to that colour's
-  // angle within the wheel.
-  // For reference: Red is at 0 degrees, Yellow is at 60 degrees, Green is at 120, and Blue at 240.
+ // The reference colours here are in the HSV colourspace, we look at the hue component, which is a
+ // defined within a colour-wheel that contains all possible colours. Hence, the hue component
+ // is a value in [0 360] degrees, or [0 2*pi] radians, indicating the colour's location on the
+ // colour wheel. If we want to detect a different colour, all we need to do is figure out its
+ // location in the colour wheel and then set the angles below (in radians) to that colour's
+ // angle within the wheel.
+ // For reference: Red is at 0 degrees, Yellow is at 60 degrees, Green is at 120, and Blue at 240.
 
   // Agent IDs are as follows: 0 : Own bot,  1 : Opponent's bot, 2 : Ball
-  if (col == 0)
-  {
-    vr_x = cos(0);
-    vr_y = sin(0);
-  } // RED
-  else if (col == 2)
-  {
-    vr_x = cos(2.0 * PI * (60.0 / 360.0));
-    vr_y = sin(2.0 * PI * (60.0 / 360.0));
-  } // YELLOW
-  else if (col == 1)
-  {
-    vr_x = cos(2.0 * PI * (240.0 / 360.0));
-    vr_y = sin(2.0 * PI * (240.0 / 360.0));
-  } // BLUE
+  if (col==0) {vr_x=cos(0); vr_y=sin(0);}                   // RED                                
+  else if (col==2) {vr_x=cos(2.0*PI*(60.0/360.0));
+                    vr_y=sin(2.0*PI*(60.0/360.0));}         // YELLOW
+  else if (col==1) {vr_x=cos(2.0*PI*(240.0/360.0));
+                   vr_y=sin(2.0*PI*(240.0/360.0));}         // BLUE
 
-  // In what follows, colours are represented by a unit-length vector in the direction of the
-  // hue for that colour. Similarity between two colours (e.g. a reference above, and a pixel's
-  // or blob's colour) is measured as the dot-product between the corresponding colour vectors.
-  // If the dot product is 1 the colours are identical (their vectors perfectly aligned),
-  // from there, the dot product decreases as the colour vectors start to point in different
-  // directions. Two colours that are opposite will result in a dot product of -1.
+ // In what follows, colours are represented by a unit-length vector in the direction of the
+ // hue for that colour. Similarity between two colours (e.g. a reference above, and a pixel's
+ // or blob's colour) is measured as the dot-product between the corresponding colour vectors.
+ // If the dot product is 1 the colours are identical (their vectors perfectly aligned), 
+ // from there, the dot product decreases as the colour vectors start to point in different
+ // directions. Two colours that are opposite will result in a dot product of -1.
+ 
+ p=blobs;
+ while (p!=NULL)
+ { 
+  if (p->size>maxsize) maxsize=p->size;
+  p=p->next;
+ }
 
-  p = blobs;
-  while (p != NULL)
+ p=blobs;
+ fnd=NULL;
+ while (p!=NULL)
+ {
+
+  // Normalization and range extension
+  vb_x=cos(p->H);
+  vb_y=sin(p->H);
+
+  dp=(vb_x*vr_x)+(vb_y*vr_y);                                       // Dot product between the reference color vector, and the
+                                                                    // blob's color vector.
+
+  fit=dp*p->S*p->S*(p->size/maxsize);                               // <<< --- This is the critical matching criterion.
+                                                                    // * THe dot product with the reference direction,
+                                                                    // * Saturation squared
+                                                                    // * And blob size (in pixels, not from bounding box)
+                                                                    // You can try to fine tune this if you feel you can
+                                                                    // improve tracking stability by changing this fitness
+                                                                    // computation
+
+  // Check for a gray-ish blob - they tend to give trouble
+  grayness=0;
+  if (fabs(p->R-p->G)/p->R<maxgray&&fabs(p->R-p->G)/p->G<maxgray&&fabs(p->R-p->B)/p->R<maxgray&&fabs(p->R-p->B)/p->B<maxgray&&\
+      fabs(p->G-p->B)/p->G<maxgray&&fabs(p->G-p->B)/p->B<maxgray) grayness=1;
+  
+  if (fit>maxfit&&dp>mincos&&grayness==0)
   {
-    if (p->size > maxsize)
-      maxsize = p->size;
-    p = p->next;
+   fnd=p;
+   maxfit=fit;
   }
+  
+  p=p->next;
+ }
 
-  p = blobs;
-  fnd = NULL;
-  while (p != NULL)
-  {
-
-    // Normalization and range extension
-    vb_x = cos(p->H);
-    vb_y = sin(p->H);
-
-    dp = (vb_x * vr_x) + (vb_y * vr_y); // Dot product between the reference color vector, and the
-                                        // blob's color vector.
-
-    fit = dp * p->S * p->S * (p->size / maxsize); // <<< --- This is the critical matching criterion.
-                                                  // * THe dot product with the reference direction,
-                                                  // * Saturation squared
-                                                  // * And blob size (in pixels, not from bounding box)
-                                                  // You can try to fine tune this if you feel you can
-                                                  // improve tracking stability by changing this fitness
-                                                  // computation
-
-    // Check for a gray-ish blob - they tend to give trouble
-    grayness = 0;
-    if (fabs(p->R - p->G) / p->R < maxgray && fabs(p->R - p->G) / p->G < maxgray && fabs(p->R - p->B) / p->R < maxgray && fabs(p->R - p->B) / p->B < maxgray &&
-        fabs(p->G - p->B) / p->G < maxgray && fabs(p->G - p->B) / p->B < maxgray)
-      grayness = 1;
-
-    if (fit > maxfit && dp > mincos && grayness == 0)
-    {
-      fnd = p;
-      maxfit = fit;
-    }
-
-    p = p->next;
-  }
-
-  return (fnd);
+ return(fnd);
 }
 
 void track_agents(struct RoboAI *ai, struct blob *blobs)
 {
-  ////////////////////////////////////////////////////////////////////////
-  // This function does the tracking of each agent in the field. It looks
-  // for blobs that represent the bot, the ball, and our opponent (which
-  // colour is assigned to each bot is determined by a command line
-  // parameter).
-  // It keeps track within the robot's AI data structure of multiple
-  // parameters related to each agent:
-  // - Position
-  // - Velocity vector. Not valid while rotating, but possibly valid
-  //   while turning.
-  // - Motion direction vector. Not valid
-  //   while rotating - possibly valid while turning
-  // - Heading direction - vector obtained from the blob shape, it is
-  //   correct up to a factor of (-1) (i.e. it may point backward w.r.t.
-  //   the direction your bot is facing). This vector remains valid
-  //   under rotation.
-  // - Pointers to the blob data structure for each agent
-  //
-  // This function will update the blob data structure with the velocity
-  // and heading information from tracking.
-  //
-  // NOTE: If a particular agent is not found, the corresponding field in
-  //       the AI data structure (ai->st.ball, ai->st.self, ai->st.opp)
-  //       will remain NULL. Make sure you check for this before you
-  //       try to access an agent's blob data!
-  //
-  // In addition to this, if calibration data is available then this
-  // function adjusts the Y location of the bot and the opponent to
-  // adjust for perspective projection error. See the handout on how
-  // to perform the calibration process.
-  //
-  // This function receives a pointer to the robot's AI data structure,
-  // and a list of blobs.
-  //
-  // You can change this function if you feel the tracking is not stable.
-  // First, though, be sure to completely understand what it's doing.
-  /////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////
+ // This function does the tracking of each agent in the field. It looks
+ // for blobs that represent the bot, the ball, and our opponent (which
+ // colour is assigned to each bot is determined by a command line
+ // parameter).
+ // It keeps track within the robot's AI data structure of multiple 
+ // parameters related to each agent:
+ // - Position
+ // - Velocity vector. Not valid while rotating, but possibly valid
+ //   while turning.
+ // - Motion direction vector. Not valid
+ //   while rotating - possibly valid while turning
+ // - Heading direction - vector obtained from the blob shape, it is
+ //   correct up to a factor of (-1) (i.e. it may point backward w.r.t.
+ //   the direction your bot is facing). This vector remains valid
+ //   under rotation.
+ // - Pointers to the blob data structure for each agent
+ //
+ // This function will update the blob data structure with the velocity
+ // and heading information from tracking. 
+ //
+ // NOTE: If a particular agent is not found, the corresponding field in
+ //       the AI data structure (ai->st.ball, ai->st.self, ai->st.opp)
+ //       will remain NULL. Make sure you check for this before you 
+ //       try to access an agent's blob data! 
+ //
+ // In addition to this, if calibration data is available then this
+ // function adjusts the Y location of the bot and the opponent to 
+ // adjust for perspective projection error. See the handout on how
+ // to perform the calibration process.
+ //
+ // This function receives a pointer to the robot's AI data structure,
+ // and a list of blobs.
+ //
+ // You can change this function if you feel the tracking is not stable.
+ // First, though, be sure to completely understand what it's doing.
+ /////////////////////////////////////////////////////////////////////////
 
-  struct blob *p;
-  double mg, vx, vy, pink, doff, dmin, dmax, adj;
+ struct blob *p;
+ double mg,vx,vy,pink,doff,dmin,dmax,adj;
 
-  // Reset ID flags
-  ai->st.ballID = 0;
-  ai->st.selfID = 0;
-  ai->st.oppID = 0;
-  ai->st.ball = NULL; // Be sure you check these are not NULL before
-  ai->st.self = NULL; // trying to access data for the ball/self/opponent!
-  ai->st.opp = NULL;
+ // Reset ID flags
+ ai->st.ballID=0;
+ ai->st.selfID=0;
+ ai->st.oppID=0;
+ ai->st.ball=NULL;			// Be sure you check these are not NULL before
+ ai->st.self=NULL;			// trying to access data for the ball/self/opponent!
+ ai->st.opp=NULL;
 
-  // Find the ball
-  p = id_coloured_blob2(ai, blobs, 2); // With 2, Ball is set to be yellow
-  if (p)
+ // Find the ball
+ p=id_coloured_blob2(ai,blobs,2);       // With 2, Ball is set to be yellow
+ if (p)
+ {
+  ai->st.ball=p;			// New pointer to ball
+  ai->st.ballID=1;			// Set ID flag for ball (we found it!)
+  ai->st.bvx=p->cx-ai->st.old_bcx;	// Update ball velocity in ai structure and blob structure
+  ai->st.bvy=p->cy-ai->st.old_bcy;
+  ai->st.ball->vx=ai->st.bvx;
+  ai->st.ball->vy=ai->st.bvy;
+  ai->st.bdx=p->dx;
+  ai->st.bdy=p->dy;
+
+  ai->st.old_bcx=p->cx; 		// Update old position for next frame's computation
+  ai->st.old_bcy=p->cy;
+  ai->st.ball->idtype=3;
+
+  vx=ai->st.bvx;			// Compute motion direction (normalized motion vector)
+  vy=ai->st.bvy;
+  mg=sqrt((vx*vx)+(vy*vy));
+  if (mg>NOISE_VAR)			// Update heading vector if meaningful motion detected
   {
-    ai->st.ball = p;                     // New pointer to ball
-    ai->st.ballID = 1;                   // Set ID flag for ball (we found it!)
-    ai->st.bvx = p->cx - ai->st.old_bcx; // Update ball velocity in ai structure and blob structure
-    ai->st.bvy = p->cy - ai->st.old_bcy;
-    ai->st.ball->vx = ai->st.bvx;
-    ai->st.ball->vy = ai->st.bvy;
-    ai->st.bdx = p->dx;
-    ai->st.bdy = p->dy;
-
-    ai->st.old_bcx = p->cx; // Update old position for next frame's computation
-    ai->st.old_bcy = p->cy;
-    ai->st.ball->idtype = 3;
-
-    vx = ai->st.bvx; // Compute motion direction (normalized motion vector)
-    vy = ai->st.bvy;
-    mg = sqrt((vx * vx) + (vy * vy));
-    if (mg > NOISE_VAR) // Update heading vector if meaningful motion detected
-    {
-      vx /= mg;
-      vy /= mg;
-      ai->st.bmx = vx;
-      ai->st.bmy = vy;
-    }
-    else
-    {
-      ai->st.bmx = 0;
-      ai->st.bmy = 0;
-    }
-    ai->st.ball->mx = ai->st.bmx;
-    ai->st.ball->my = ai->st.bmy;
+   vx/=mg;
+   vy/=mg;
+   ai->st.bmx=vx;
+   ai->st.bmy=vy;
   }
   else
   {
-    ai->st.ball = NULL;
+    ai->st.bmx=0;
+    ai->st.bmy=0;
   }
+  ai->st.ball->mx=ai->st.bmx;
+  ai->st.ball->my=ai->st.bmy;
+ }
+ else {
+  ai->st.ball=NULL;
+ }
+ 
+ // ID our bot
+ if (ai->st.botCol==0) p=id_coloured_blob2(ai,blobs,1);     // If 0, our bot is BLUE, if 1 our bot is RED
+ else p=id_coloured_blob2(ai,blobs,0);
+ if (p!=NULL&&p!=ai->st.ball)
+ {
+  ai->st.self=p;			// Update pointer to self-blob
 
-  // ID our bot
-  if (ai->st.botCol == 0)
-    p = id_coloured_blob2(ai, blobs, 1); // If 0, our bot is BLUE, if 1 our bot is RED
-  else
-    p = id_coloured_blob2(ai, blobs, 0);
-  if (p != NULL && p != ai->st.ball)
+  // Adjust Y position if we have calibration data
+  if (fabs(p->adj_Y[0][0])>.1)
   {
-    ai->st.self = p; // Update pointer to self-blob
-
-    // Adjust Y position if we have calibration data
-    if (fabs(p->adj_Y[0][0]) > .1)
-    {
-      dmax = 384.0 - p->adj_Y[0][0];
-      dmin = 767.0 - p->adj_Y[1][0];
-      pink = (dmax - dmin) / (768.0 - 384.0);
-      adj = dmin + ((p->adj_Y[1][0] - p->cy) * pink);
-      p->cy = p->cy + adj;
-      if (p->cy > 767)
-        p->cy = 767;
-      if (p->cy < 1)
-        p->cy = 1;
-    }
-
-    ai->st.selfID = 1;
-    ai->st.svx = p->cx - ai->st.old_scx;
-    ai->st.svy = p->cy - ai->st.old_scy;
-    ai->st.self->vx = ai->st.svx;
-    ai->st.self->vy = ai->st.svy;
-    ai->st.sdx = p->dx;
-    ai->st.sdy = p->dy;
-
-    vx = ai->st.svx;
-    vy = ai->st.svy;
-    mg = sqrt((vx * vx) + (vy * vy));
-
-    if (mg > NOISE_VAR)
-    {
-      vx /= mg;
-      vy /= mg;
-      ai->st.smx = vx;
-      ai->st.smy = vy;
-    }
-    else
-    {
-      ai->st.smx = 0;
-      ai->st.smy = 0;
-    }
-    ai->st.self->mx = ai->st.smx;
-    ai->st.self->my = ai->st.smy;
-    ai->st.old_scx = p->cx;
-    ai->st.old_scy = p->cy;
-    ai->st.self->idtype = 1;
+   dmax=384.0-p->adj_Y[0][0];
+   dmin=767.0-p->adj_Y[1][0];
+   pink=(dmax-dmin)/(768.0-384.0);
+   adj=dmin+((p->adj_Y[1][0]-p->cy)*pink);
+   p->cy=p->cy+adj;
+   if (p->cy>767) p->cy=767;
+   if (p->cy<1) p->cy=1;
   }
-  else
-    ai->st.self = NULL;
 
-  // ID our opponent
-  if (ai->st.botCol == 0)
-    p = id_coloured_blob2(ai, blobs, 0);
-  else
-    p = id_coloured_blob2(ai, blobs, 1);
-  if (p != NULL && p != ai->st.ball && p != ai->st.self)
+  ai->st.selfID=1;
+  ai->st.svx=p->cx-ai->st.old_scx;
+  ai->st.svy=p->cy-ai->st.old_scy;
+  ai->st.self->vx=ai->st.svx;
+  ai->st.self->vy=ai->st.svy;
+  ai->st.sdx=p->dx;
+  ai->st.sdy=p->dy;
+
+  vx=ai->st.svx;
+  vy=ai->st.svy;
+  mg=sqrt((vx*vx)+(vy*vy));
+
+  if (mg>NOISE_VAR)
   {
-    ai->st.opp = p;
-
-    if (fabs(p->adj_Y[0][1]) > .1)
-    {
-      dmax = 384.0 - p->adj_Y[0][1];
-      dmin = 767.0 - p->adj_Y[1][1];
-      pink = (dmax - dmin) / (768.0 - 384.0);
-      adj = dmin + ((p->adj_Y[1][1] - p->cy) * pink);
-      p->cy = p->cy + adj;
-      if (p->cy > 767)
-        p->cy = 767;
-      if (p->cy < 1)
-        p->cy = 1;
-    }
-
-    ai->st.oppID = 1;
-    ai->st.ovx = p->cx - ai->st.old_ocx;
-    ai->st.ovy = p->cy - ai->st.old_ocy;
-    ai->st.opp->vx = ai->st.ovx;
-    ai->st.opp->vy = ai->st.ovy;
-    ai->st.odx = p->dx;
-    ai->st.ody = p->dy;
-
-    ai->st.old_ocx = p->cx;
-    ai->st.old_ocy = p->cy;
-    ai->st.opp->idtype = 2;
-
-    vx = ai->st.ovx;
-    vy = ai->st.ovy;
-    mg = sqrt((vx * vx) + (vy * vy));
-    if (mg > NOISE_VAR)
-    {
-      vx /= mg;
-      vy /= mg;
-      ai->st.omx = vx;
-      ai->st.omy = vy;
-    }
-    else
-    {
-      ai->st.omx = 0;
-      ai->st.omy = 0;
-    }
-    ai->st.opp->mx = ai->st.omx;
-    ai->st.opp->my = ai->st.omy;
+   vx/=mg;
+   vy/=mg;
+   ai->st.smx=vx;
+   ai->st.smy=vy;
   }
   else
-    ai->st.opp = NULL;
+  {
+   ai->st.smx=0;
+   ai->st.smy=0;
+  }
+  ai->st.self->mx=ai->st.smx;
+  ai->st.self->my=ai->st.smy;
+  ai->st.old_scx=p->cx; 
+  ai->st.old_scy=p->cy;
+  ai->st.self->idtype=1;
+ }
+ else ai->st.self=NULL;
+
+ // ID our opponent
+ if (ai->st.botCol==0) p=id_coloured_blob2(ai,blobs,0);
+ else p=id_coloured_blob2(ai,blobs,1);
+ if (p!=NULL&&p!=ai->st.ball&&p!=ai->st.self)
+ {
+  ai->st.opp=p;	
+
+  if (fabs(p->adj_Y[0][1])>.1)
+  {
+   dmax=384.0-p->adj_Y[0][1];
+   dmin=767.0-p->adj_Y[1][1];
+   pink=(dmax-dmin)/(768.0-384.0);
+   adj=dmin+((p->adj_Y[1][1]-p->cy)*pink);
+   p->cy=p->cy+adj;
+   if (p->cy>767) p->cy=767;
+   if (p->cy<1) p->cy=1;
+  }
+
+  ai->st.oppID=1;
+  ai->st.ovx=p->cx-ai->st.old_ocx;
+  ai->st.ovy=p->cy-ai->st.old_ocy;
+  ai->st.opp->vx=ai->st.ovx;
+  ai->st.opp->vy=ai->st.ovy;
+  ai->st.odx=p->dx;
+  ai->st.ody=p->dy;
+
+  ai->st.old_ocx=p->cx; 
+  ai->st.old_ocy=p->cy;
+  ai->st.opp->idtype=2;
+
+  vx=ai->st.ovx;
+  vy=ai->st.ovy;
+  mg=sqrt((vx*vx)+(vy*vy));
+  if (mg>NOISE_VAR)
+  {
+   vx/=mg;
+   vy/=mg;
+   ai->st.omx=vx;
+   ai->st.omy=vy;
+  }
+  else
+  {
+   ai->st.omx=0;
+   ai->st.omy=0;
+  }
+  ai->st.opp->mx=ai->st.omx;
+  ai->st.opp->my=ai->st.omy;
+ }
+ else ai->st.opp=NULL;
+
 }
 
 void id_bot(struct RoboAI *ai, struct blob *blobs)
 {
-  ///////////////////////////////////////////////////////////////////////////////
-  // ** DO NOT CHANGE THIS FUNCTION **
-  // This routine calls track_agents() to identify the blobs corresponding to the
-  // robots and the ball. It commands the bot to move forward slowly so heading
-  // can be established from blob-tracking.
-  //
-  // NOTE 1: All heading estimates, velocity vectors, position, and orientation
-  //         are noisy. Remember what you have learned about noise management.
-  //
-  // NOTE 2: Heading and velocity estimates are not valid while the robot is
-  //         rotating in place (and the final heading vector is not valid either).
-  //         To re-establish heading, forward/backward motion is needed.
-  //
-  // NOTE 3: However, you do have a reliable orientation vector within the blob
-  //         data structures derived from blob shape. It points along the long
-  //         side of the rectangular 'uniform' of your bot. It is valid at all
-  //         times (even when rotating), but may be pointing backward and the
-  //         pointing direction can change over time.
-  //
-  // You should *NOT* call this function during the game. This is only for the
-  // initialization step. Calling this function during the game will result in
-  // unpredictable behaviour since it will update the AI state.
-  ///////////////////////////////////////////////////////////////////////////////
+ ///////////////////////////////////////////////////////////////////////////////
+ // ** DO NOT CHANGE THIS FUNCTION **
+ // This routine calls track_agents() to identify the blobs corresponding to the
+ // robots and the ball. It commands the bot to move forward slowly so heading
+ // can be established from blob-tracking.
+ //
+ // NOTE 1: All heading estimates, velocity vectors, position, and orientation
+ //         are noisy. Remember what you have learned about noise management.
+ //
+ // NOTE 2: Heading and velocity estimates are not valid while the robot is
+ //         rotating in place (and the final heading vector is not valid either).
+ //         To re-establish heading, forward/backward motion is needed.
+ //
+ // NOTE 3: However, you do have a reliable orientation vector within the blob
+ //         data structures derived from blob shape. It points along the long
+ //         side of the rectangular 'uniform' of your bot. It is valid at all
+ //         times (even when rotating), but may be pointing backward and the
+ //         pointing direction can change over time.
+ //
+ // You should *NOT* call this function during the game. This is only for the
+ // initialization step. Calling this function during the game will result in
+ // unpredictable behaviour since it will update the AI state.
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ struct blob *p;
+ static double stepID=0;
+ double frame_inc=1.0/5.0;
 
-  struct blob *p;
-  static double stepID = 0;
-  double frame_inc = 1.0 / 5.0;
+ BT_drive(LEFT_MOTOR, RIGHT_MOTOR, NEG*30);			// Start forward motion to establish heading
+					// Will move for a few frames.
 
-  BT_drive(LEFT_MOTOR, RIGHT_MOTOR, NEG * 30); // Start forward motion to establish heading
-                                               // Will move for a few frames.
+ track_agents(ai,blobs);		// Call the tracking function to find each agent
 
-  track_agents(ai, blobs); // Call the tracking function to find each agent
+ if (ai->st.selfID==1&&ai->st.self!=NULL)
+  fprintf(stderr,"Successfully identified self blob at (%f,%f)\n",ai->st.self->cx,ai->st.self->cy);
+ if (ai->st.oppID==1&&ai->st.opp!=NULL)
+  fprintf(stderr,"Successfully identified opponent blob at (%f,%f)\n",ai->st.opp->cx,ai->st.opp->cy);
+ if (ai->st.ballID==1&&ai->st.ball!=NULL)
+  fprintf(stderr,"Successfully identified ball blob at (%f,%f)\n",ai->st.ball->cx,ai->st.ball->cy);
 
-  if (ai->st.selfID == 1 && ai->st.self != NULL)
-    fprintf(stderr, "Successfully identified self blob at (%f,%f)\n", ai->st.self->cx, ai->st.self->cy);
-  if (ai->st.oppID == 1 && ai->st.opp != NULL)
-    fprintf(stderr, "Successfully identified opponent blob at (%f,%f)\n", ai->st.opp->cx, ai->st.opp->cy);
-  if (ai->st.ballID == 1 && ai->st.ball != NULL)
-    fprintf(stderr, "Successfully identified ball blob at (%f,%f)\n", ai->st.ball->cx, ai->st.ball->cy);
+ stepID+=frame_inc;
+ if (stepID>=1&&ai->st.selfID==1)	// Stop after a suitable number of frames.
+ {
+  ai->st.state+=1;
+  stepID=0;
+  BT_all_stop(0);
+ }
+ else if (stepID>=1) stepID=0;
 
-  stepID += frame_inc;
-  if (stepID >= 1 && ai->st.selfID == 1) // Stop after a suitable number of frames.
-  {
-    ai->st.state += 1;
-    stepID = 0;
-    BT_all_stop(0);
-  }
-  else if (stepID >= 1)
-    stepID = 0;
-
-  // At each point, each agent currently in the field should have been identified.
-  return;
+ // At each point, each agent currently in the field should have been identified.
+ return;
 }
 /*********************************************************************************
  * End of blob ID and tracking code
@@ -655,189 +630,167 @@ void id_bot(struct RoboAI *ai, struct blob *blobs)
  * *******************************************************************************/
 int setupAI(int mode, int own_col, struct RoboAI *ai)
 {
-  /////////////////////////////////////////////////////////////////////////////
-  // ** DO NOT CHANGE THIS FUNCTION **
-  // This sets up the initial AI for the robot. There are three different modes:
-  //
-  // SOCCER -> Complete AI, tries to win a soccer game against an opponent
-  // PENALTY -> Score a goal (no goalie!)
-  // CHASE -> Kick the ball and chase it around the field
-  //
-  // Each mode sets a different initial state (0, 100, 200). Hence,
-  // AI states for SOCCER will be 0 through 99
-  // AI states for PENALTY will be 100 through 199
-  // AI states for CHASE will be 200 through 299
-  //
-  // You will of course have to add code to the AI_main() routine to handle
-  // each mode's states and do the right thing.
-  //
-  // Your bot should not become confused about what mode it started in!
-  //////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////////////////////////////////////////////
+ // ** DO NOT CHANGE THIS FUNCTION **
+ // This sets up the initial AI for the robot. There are three different modes:
+ //
+ // SOCCER -> Complete AI, tries to win a soccer game against an opponent
+ // PENALTY -> Score a goal (no goalie!)
+ // CHASE -> Kick the ball and chase it around the field
+ //
+ // Each mode sets a different initial state (0, 100, 200). Hence, 
+ // AI states for SOCCER will be 0 through 99
+ // AI states for PENALTY will be 100 through 199
+ // AI states for CHASE will be 200 through 299
+ //
+ // You will of course have to add code to the AI_main() routine to handle
+ // each mode's states and do the right thing.
+ //
+ // Your bot should not become confused about what mode it started in!
+ //////////////////////////////////////////////////////////////////////////////        
 
-  switch (mode)
-  {
-  case AI_SOCCER:
-    fprintf(stderr, "Standard Robo-Soccer mode requested\n");
-    ai->st.state = 0; // <-- Set AI initial state to 0
-    break;
-  case AI_PENALTY:
-    fprintf(stderr, "Penalty mode! let's kick it!\n");
-    ai->st.state = 100; // <-- Set AI initial state to 100
-    break;
-  case AI_CHASE:
-    fprintf(stderr, "Chasing the ball...\n");
-    ai->st.state = 200; // <-- Set AI initial state to 200
-    break;
-  default:
-    fprintf(stderr, "AI mode %d is not implemented, setting mode to SOCCER\n", mode);
-    ai->st.state = 0;
-  }
+ switch (mode) {
+ case AI_SOCCER:
+	fprintf(stderr,"Standard Robo-Soccer mode requested\n");
+        ai->st.state=0;		// <-- Set AI initial state to 0
+        break;
+ case AI_PENALTY:
+	fprintf(stderr,"Penalty mode! let's kick it!\n");
+	ai->st.state=100;	// <-- Set AI initial state to 100
+        break;
+ case AI_CHASE:
+	fprintf(stderr,"Chasing the ball...\n");
+	ai->st.state=200;	// <-- Set AI initial state to 200
+        break;	
+ default:
+	fprintf(stderr, "AI mode %d is not implemented, setting mode to SOCCER\n", mode);
+	ai->st.state=0;
+	}
 
-  BT_all_stop(0);      // Stop bot,
-  ai->runAI = AI_main; // and initialize all remaining AI data
-  ai->calibrate = AI_calibrate;
-  ai->st.ball = NULL;
-  ai->st.self = NULL;
-  ai->st.opp = NULL;
-  ai->st.side = 0;
-  ai->st.botCol = own_col;
-  ai->st.old_bcx = 0;
-  ai->st.old_bcy = 0;
-  ai->st.old_scx = 0;
-  ai->st.old_scy = 0;
-  ai->st.old_ocx = 0;
-  ai->st.old_ocy = 0;
-  ai->st.bvx = 0;
-  ai->st.bvy = 0;
-  ai->st.svx = 0;
-  ai->st.svy = 0;
-  ai->st.ovx = 0;
-  ai->st.ovy = 0;
-  ai->st.sdx = 0;
-  ai->st.sdy = 0;
-  ai->st.odx = 0;
-  ai->st.ody = 0;
-  ai->st.bdx = 0;
-  ai->st.bdy = 0;
-  ai->st.selfID = 0;
-  ai->st.oppID = 0;
-  ai->st.ballID = 0;
-  ai->DPhead = NULL;
-  fprintf(stderr, "Initialized!\n");
+ BT_all_stop(0);			// Stop bot,
+ ai->runAI = AI_main;		// and initialize all remaining AI data
+ ai->calibrate = AI_calibrate;
+ ai->st.ball=NULL;
+ ai->st.self=NULL;
+ ai->st.opp=NULL;
+ ai->st.side=0;
+ ai->st.botCol=own_col;
+ ai->st.old_bcx=0;
+ ai->st.old_bcy=0;
+ ai->st.old_scx=0;
+ ai->st.old_scy=0;
+ ai->st.old_ocx=0;
+ ai->st.old_ocy=0;
+ ai->st.bvx=0;
+ ai->st.bvy=0;
+ ai->st.svx=0;
+ ai->st.svy=0;
+ ai->st.ovx=0;
+ ai->st.ovy=0;
+ ai->st.sdx=0;
+ ai->st.sdy=0;
+ ai->st.odx=0;
+ ai->st.ody=0;
+ ai->st.bdx=0;
+ ai->st.bdy=0;
+ ai->st.selfID=0;
+ ai->st.oppID=0;
+ ai->st.ballID=0;
+ ai->DPhead=NULL;
+ fprintf(stderr,"Initialized!\n");
 
-  return (1);
+ return(1);
 }
 
 void AI_calibrate(struct RoboAI *ai, struct blob *blobs)
 {
-  // Basic colour blob tracking loop for calibration of vertical offset
-  // See the handout for the sequence of steps needed to achieve calibration.
-  // The code here just makes sure the image processing loop is constantly
-  // tracking the bots while they're placed in the locations required
-  // to do the calibration (i.e. you DON'T need to add anything more
-  // in this function).
-  track_agents(ai, blobs);
+ // Basic colour blob tracking loop for calibration of vertical offset
+ // See the handout for the sequence of steps needed to achieve calibration.
+ // The code here just makes sure the image processing loop is constantly
+ // tracking the bots while they're placed in the locations required
+ // to do the calibration (i.e. you DON'T need to add anything more
+ // in this function).
+ track_agents(ai,blobs);
 }
 
-void pushToArray(double *array, double num)
-{
-  for (int i = BUFFER_SIZE; i > 0; i--)
-  {
-    array[i] = array[i - 1];
+void pushToArray(double* array, double num){
+  for(int i =BUFFER_SIZE ; i > 0; i--){
+    array[i] = array[i-1]; 
   }
   array[0] = num;
 }
 
-void pushToArrayOfArray(double **array, double *vector, int vecsize)
-{
-  for (int i = BUFFER_SIZE; i > 0; i--)
-  {
-    for (int j = 0; j < vecsize; j++)
-    {
-      array[i][j] = array[i - 1][j];
+void pushToArrayOfArray(double** array, double* vector, int vecsize){
+  for(int i =BUFFER_SIZE ; i > 0; i--){
+    for(int j=0; j < vecsize; j++){
+      array[i][j] = array[i-1][j]; 
     }
   }
-  for (int j = 0; j < vecsize; j++)
-  {
+  for(int j=0; j < vecsize; j++){
     array[0][j] = vector[j];
   }
 }
 
-void calculate()
-{
+void calculate(){
+
 }
 
-void calculateSelfDirectionRad
-{
+void calculateSelfDirectionRad{
+  
 }
 
-void record(struct RoboAI *ai)
-{
-  double SelfDirectionVector[2] = {SelfDx, SelfDy};
+void record(struct RoboAI *ai){
+  double SelfDirectionVector [2] = {SelfDx, SelfDy}; 
   pushToArrayOfArray(recSelfDirection, SelfDirectionVector, 2);
+
 }
 
-void moveForward(int power)
-{
-  if (curmove != MOVEFORWARD || curpower != power)
-  {
-    BT_drive(LPORT, RPORT, NEG * power);
-    curmove = MOVEFORWARD;
-    curpower = power;
+void moveForward(int power){
+  if(curmove != MOVEFORWARD || curpower != power){
+  BT_drive(LPORT, RPORT, NEG*power);
+  curmove = MOVEFORWARD;
+  curpower = power;
   }
 }
 
-void moveBackward(int power)
-{
-  if (curmove != MOVEBACK || curpower != power)
-  {
-    BT_drive(LPORT, RPORT, NEG * (-power));
-    curmove = MOVEBACK;
-    curpower = power;
+void moveBackward(int power){
+  if(curmove != MOVEBACK || curpower != power){
+  BT_drive(LPORT, RPORT, NEG*(-power));
+  curmove = MOVEBACK;
+  curpower = power;
   }
 }
 
-void turnLeft(int power)
-{
-  if (curmove != TURNLEFT || curpower != power)
-  {
-    BT_turn(LPORT, NEG * (-power), RPORT, NEG * (power));
-    curmove = TURNLEFT;
-    curpower = power;
+void turnLeft(int power){
+  if(curmove != TURNLEFT || curpower != power){
+  BT_turn(LPORT, NEG*(-power), RPORT, NEG*(power));
+  curmove = TURNLEFT;
+  curpower = power;
   }
 }
 
-void turnRight(int power)
-{
-  if (curmove != TURNRIGHT || curpower != power)
-  {
-    BT_turn(LPORT, NEG * (power), RPORT, NEG * (-power));
-    curmove = TURNRIGHT;
-    curpower = power;
+void turnRight(int power){
+  if(curmove != TURNRIGHT || curpower != power){
+  BT_turn(LPORT, NEG*(power), RPORT, NEG*(-power));
+  curmove = TURNRIGHT;
+  curpower = power;
   }
 }
 
-void Brake()
-{
-  if (curmove != BRAKE)
-  {
-    BT_all_stop(1);
-    curmove = BRAKE;
+void Brake(){
+  if(curmove != BRAKE){
+  BT_all_stop(1);
+  curmove = BRAKE;
   }
 }
 
-int kickBall()
-{
-  if (curmove != KICKING)
-  {
+int kickBall(){
+  if(curmove != KICKING){
     BT_motor_port_start(KPORT, 100);
     curmove = KICKING;
     timeKicking = 0;
-  }
-  else
-  {
-    if (timeKicking > 10)
-    {
+  }else{
+    if(timeKicking > 10){
       return 0;
     }
   }
@@ -845,23 +798,17 @@ int kickBall()
   return 1;
 }
 
-int moveAndKickBall()
-{
-  if (curmove != MOVE_AND_KICKING)
-  {
+int moveAndKickBall(){
+  if(curmove != MOVE_AND_KICKING){
     curmove = MOVE_AND_KICKING;
     timeKicking = 0;
-    BT_drive(LPORT, RPORT, 100);
+    BT_drive(LPORT,RPORT, 100);
     printf("Accelerating 100");
-  }
-  else
-  {
-    if (timeKicking == 10 * kick_scale)
-    {
+  }else{
+    if(timeKicking == 10*kick_scale){
       BT_motor_port_start(KPORT, 100);
     }
-    if (timeKicking > 20 * kick_scale)
-    {
+    if(timeKicking > 20*kick_scale){
       Brake();
       return 0;
     }
@@ -870,17 +817,12 @@ int moveAndKickBall()
   return 1;
 }
 
-int resetKick()
-{
-  if (curmove != RESETING_KICK)
-  {
+int resetKick(){
+  if(curmove != RESETING_KICK){
     BT_motor_port_start(KPORT, -100);
-    curmove = RESETING_KICK;
-  }
-  else
-  {
-    if (BT_read_touch_sensor(TPORT) == 1)
-    {
+    curmove = RESETING_KICK; 
+  }else{
+    if(BT_read_touch_sensor(TPORT) == 1){
       Brake();
       return 0;
     }
@@ -888,172 +830,131 @@ int resetKick()
   return 1;
 }
 
-void recordDirection(double ax, double ay)
-{
-  for (int i = BUFFER_SIZE; i > 0; i--)
-  {
-    direction_buffer[i - 1][X] = direction_buffer[i][X];
-    direction_buffer[i - 1][Y] = direction_buffer[i][Y];
+void recordDirection(double ax, double ay){
+  for(int i = BUFFER_SIZE; i > 0; i--){
+    direction_buffer[i-1][X] = direction_buffer[i][X];
+    direction_buffer[i-1][Y] = direction_buffer[i][Y];
   }
-  direction_buffer[BUFFER_SIZE - 1][X] = ax;
-  direction_buffer[BUFFER_SIZE - 1][Y] = ay;
+  direction_buffer[BUFFER_SIZE-1][X] = ax;
+  direction_buffer[BUFFER_SIZE-1][Y] = ay;
 }
 
-void normalize(double *x, double *y)
-{
-  double len;
-  len = sqrt((*x) * (*x) + (*y) * (*y));
-  *x = *x / len;
-  *y = *y / len;
+void normalize(double* x, double* y){
+    double len;
+    len = sqrt((*x)*(*x) + (*y)*(*y));
+    *x = *x / len;
+    *y = *y / len;
 }
 
-double min(double a, double b)
-{
-  if (a > b)
-  {
+double min(double a, double b){
+  if(a > b){
     return b;
   }
   return a;
 }
 
-int rotate(double ax, double ay, double bx, double by)
-{                                                                           //Sends a rotation command to the box for that vector
-  double power = min((int)50 * constrainted_abs_diff(ax, ay, bx, by), 100); //Porportional PID
-
-  if (power > 3 && power < 15)
-  { //Sets floor power to be 10
+int rotate(double ax, double ay, double bx, double by){ //Sends a rotation command to the box for that vector
+  double power = min((int) 50*constrainted_abs_diff(ax,ay,bx,by), 100); //Porportional PID 
+  
+  if(power > 3 && power <15){ //Sets floor power to be 10
     power = 15;
   }
 
-  if (power > 3)
-  {
-    if (crossie_sign(ax, ay, bx, by) < 0)
-    { // Go Left , if cross product is neg then second vector is to the right of the first so go left to correct
+  if(power > 3){
+    if(crossie_sign(ax,ay,bx,by) < 0){ // Go Left , if cross product is neg then second vector is to the right of the first so go left to correct
       turnLeft(power);
       printf("TurnLeft %lf\n", power);
-    }
-    else
-    { //Go right, if cross product is pos then second vector is to the left of the first so go right to correct
+    }else{ //Go right, if cross product is pos then second vector is to the left of the first so go right to correct
       turnRight(power);
       printf("TurnRight %lf\n", power);
     }
     return 0; //Not in position
-  }
-  else
-  {
+  }else{
     Brake();
     return 1; //In position
   }
+
 }
 
-int checkRotate(double ax, double ay, double bx, double by)
-{
-  double diff = constrainted_abs_diff(ax, ay, bx, by); //Porportional PID
-  return diff > 0.1;                                   //Returns true if heading strayed too far.
+int checkRotate(double ax, double ay, double bx, double by){ 
+  double diff = constrainted_abs_diff(ax,ay,bx,by); //Porportional PID 
+  return diff > 0.1; //Returns true if heading strayed too far.
 }
 
-int moveToBall(double scx, double scy, double bcx, double bcy)
-{
+int moveToBall(double scx, double scy, double bcx, double bcy){
 
   //Checks if robot is close to ball
-  if (fabs(scx - bcx) < BALL_BOUND)
-  {
-    if (fabs(scy - bcy) < BALL_BOUND)
-    {
+  if(fabs(scx - bcx) < BALL_BOUND){
+    if(fabs(scy - bcy) < BALL_BOUND){
       Brake();
-      return 0;
+      return 0;  
     }
   }
 
-  if (fabs(scx - bcx) < BALL_BOUND_SLOW)
-  {
-    if (fabs(scy - bcy) < BALL_BOUND_SLOW)
-    {
+  if(fabs(scx - bcx) < BALL_BOUND_SLOW){
+    if(fabs(scy - bcy) < BALL_BOUND_SLOW){
+      moveForward(100);
+    }else{
       moveForward(100);
     }
-    else
-    {
-      moveForward(100);
-    }
-  }
-  else
-  {
+  }else{
     moveForward(100);
   }
 
   return 1;
 }
 
-int moveToKickPosition(double scx, double scy, double bcx, double bcy)
-{
+int moveToKickPosition(double scx, double scy, double bcx, double bcy){
   //Checks if robot is close to kick pos
-  if (fabs(scx - bcx) < KICKPOS_BOUND)
-  {
-    if (fabs(scy - bcy) < KICKPOS_BOUND)
-    {
+  if(fabs(scx - bcx) < KICKPOS_BOUND){
+    if(fabs(scy - bcy) < KICKPOS_BOUND){
       Brake();
-      return 0;
+      return 0;  
     }
   }
 
-  if (fabs(scx - bcx) < KICKPOS_BOUND_SLOW)
-  {
-    if (fabs(scy - bcy) < KICKPOS_BOUND_SLOW)
-    {
+  if(fabs(scx - bcx) < KICKPOS_BOUND_SLOW){
+    if(fabs(scy - bcy) < KICKPOS_BOUND_SLOW){
       moveForward(15);
-    }
-    else
-    {
+    }else{
       moveForward(50);
     }
-  }
-  else
-  {
+  }else{
     moveForward(50);
   }
   return 1;
 }
 
-int moveToKickPositionY(double scx, double scy, double bcx, double bcy)
-{
-  //Checks if robot is close to kick pos
+int moveToKickPositionY(double scx, double scy, double bcx, double bcy){
+//Checks if robot is close to kick pos
 
-  if (fabs(scy - bcy) < KICKPOS_BOUND)
-  {
-    Brake();
-    return 0;
-  }
+    if(fabs(scy - bcy) < KICKPOS_BOUND){
+      Brake();
+      return 0;  
+    }
 
-  if (fabs(scy - bcy) < KICKPOS_BOUND_SLOW)
-  {
-    moveForward(15);
-  }
-  else
-  {
-    moveForward(50);
-  }
+    if(fabs(scy - bcy) < KICKPOS_BOUND_SLOW){
+      moveForward(15);
+    }else{
+      moveForward(50);
+    }
 
   return 1;
 }
 
-int moveToKickPositionX(double scx, double scy, double bcx, double bcy)
-{
-  //Checks if robot is close to kick pos
+int moveToKickPositionX(double scx, double scy, double bcx, double bcy){
+//Checks if robot is close to kick pos
 
-  if (fabs(scx - bcx) < KICKPOS_BOUND)
-  {
-    Brake();
-    return 0;
-  }
+    if(fabs(scx - bcx) < KICKPOS_BOUND){
+      Brake();
+      return 0;  
+    }
 
-  if (fabs(scx - bcx) < KICKPOS_BOUND_SLOW)
-  {
-    moveForward(15);
-  }
-  else
-  {
-    moveForward(50);
-  }
+    if(fabs(scx - bcx) < KICKPOS_BOUND_SLOW){
+      moveForward(15);
+    }else{
+      moveForward(50);
+    }
 
   return 1;
 }
@@ -1064,7 +965,7 @@ int moveToKickPositionX(double scx, double scy, double bcx, double bcy)
  * ************************************************************************/
 void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
 {
-  /*************************************************************************
+ /*************************************************************************
   This is your robot's state machine.
   
   It is called by the imageCapture code *once* per frame. And it *must not*
@@ -1131,17 +1032,17 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   ** Do not change the behaviour of the robot ID routine **
  **************************************************************************/
 
-  static double ux, uy, len, mmx, mmy, px, py, lx, ly, mi;
-  double angDif, lPow, rPow;
+  static double ux,uy,len,mmx,mmy,px,py,lx,ly,mi;
+  double angDif, lPow,rPow;
   char line[1024];
-  static int count = 0;
-  static double old_dx = 0, old_dy = 0;
+  static int count=0;
+  static double old_dx=0, old_dy=0;
   struct displayList *q;
-
+  
   // change to the ports representing the left and right motors in YOUR robot
-  char lport = MOTOR_A;
-  char rport = MOTOR_D;
-
+  char lport=MOTOR_A;
+  char rport=MOTOR_D;
+      
   /************************************************************
    * Standard initialization routine for starter code,
    * from state **0 performs agent detection and initializes
@@ -1152,58 +1053,56 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    *   parameters across frames (blob parameters change
    *   frame to frame, memoryless).
    ************************************************************/
-
-  if (ai->st.state == 0 || ai->st.state == 100 || ai->st.state == 200 || ai->st.state == 300) // Initial set up - find own, ball, and opponent blobs
-  {
-    // Carry out self id process.
-    fprintf(stderr, "Initial state, self-id in progress...\n");
-
-    id_bot(ai, blobs);
-    if ((ai->st.state % 100) != 0) // The id_bot() routine will change the AI state to initial state + 1
-    {                              // if robot identification is successful.
-      if (ai->st.self->cx >= 512)
-        ai->st.side = 1;
-      else
-        ai->st.side = 0;
-      BT_all_stop(0);
-
-      fprintf(stderr, "Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], blob direction=[%f, %f], AI state=%d\n", ai->st.self->cx, ai->st.self->cy, ai->st.smx, ai->st.smy, ai->st.sdx, ai->st.sdy, ai->st.state);
-
-      if (ai->st.self != NULL)
-      {
-        // This checks that the motion vector and the blob direction vector
-        // are pointing in the same direction. If they are not (the dot product
-        // is less than 0) it inverts the blob direction vector so it points
-        // in the same direction as the motion vector.
-        if (((ai->st.smx * ai->st.sdx) + (ai->st.smy * ai->st.sdy)) < 0)
-        {
-          ai->st.self->dx *= -1.0;
-          ai->st.self->dy *= -1.0;
-          ai->st.sdx *= -1;
-          ai->st.sdy *= -1;
-        }
-        old_dx = ai->st.sdx;
-        old_dy = ai->st.sdy;
-      }
-
-      if (ai->st.opp != NULL)
-      {
-        // Checks motion vector and blob direction for opponent. See above.
-        if (((ai->st.omx * ai->st.odx) + (ai->st.omy * ai->st.ody)) < 0)
-        {
-          ai->st.opp->dx *= -1;
-          ai->st.opp->dy *= -1;
-          ai->st.odx *= -1;
-          ai->st.ody *= -1;
-        }
-      }
-      // Notice that the ball's blob direction is not useful! only its
-      // position and motion matter.
-    }
+  
+ if (ai->st.state==0||ai->st.state==100||ai->st.state==200||ai->st.state==300)  	// Initial set up - find own, ball, and opponent blobs
+ {
+  // Carry out self id process.
+  fprintf(stderr,"Initial state, self-id in progress...\n");
+    
+  id_bot(ai,blobs);
+  if ((ai->st.state%100)!=0)	// The id_bot() routine will change the AI state to initial state + 1
+  {				// if robot identification is successful.
+   if (ai->st.self->cx>=512) ai->st.side=1; else ai->st.side=0;
+   BT_all_stop(0);
+   
+   fprintf(stderr,"Self-ID complete. Current position: (%f,%f), current heading: [%f, %f], blob direction=[%f, %f], AI state=%d\n",ai->st.self->cx,ai->st.self->cy,ai->st.smx,ai->st.smy,ai->st.sdx,ai->st.sdy,ai->st.state);
+   
+   if (ai->st.self!=NULL)
+   {
+       // This checks that the motion vector and the blob direction vector
+       // are pointing in the same direction. If they are not (the dot product
+       // is less than 0) it inverts the blob direction vector so it points
+       // in the same direction as the motion vector.
+       if (((ai->st.smx*ai->st.sdx)+(ai->st.smy*ai->st.sdy))<0)
+       {
+           ai->st.self->dx*=-1.0;
+           ai->st.self->dy*=-1.0;
+           ai->st.sdx*=-1;
+           ai->st.sdy*=-1;
+       }
+       old_dx=ai->st.sdx;
+       old_dy=ai->st.sdy;
+   }
+  
+   if (ai->st.opp!=NULL)
+   {
+       // Checks motion vector and blob direction for opponent. See above.
+       if (((ai->st.omx*ai->st.odx)+(ai->st.omy*ai->st.ody))<0)
+       {
+           ai->st.opp->dx*=-1;
+           ai->st.opp->dy*=-1;
+           ai->st.odx*=-1;
+           ai->st.ody*=-1;
+       }       
+   }
+   // Notice that the ball's blob direction is not useful! only its
+   // position and motion matter. 
   }
-  else
-  {
-    /****************************************************************************
+  
+ }
+ else
+ {
+  /****************************************************************************
    TO DO:
    You will need to replace this 'catch-all' code with actual program logic to
    implement your bot's state-based AI.
@@ -1221,104 +1120,90 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    state transitions and with calling the appropriate function based on what
    the bot is supposed to be doing.
   *****************************************************************************/
-    //fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-    track_agents(ai, blobs); // Currently, does nothing but endlessly track
+ //fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
+ track_agents(ai,blobs);		// Currently, does nothing but endlessly track
 
-    // Fix Direction Vector
-    struct blob *self = ai->st.self;
-    struct AI_data *b = (struct AI_data *)&(ai->st);
+  // Fix Direction Vector
+  struct blob* self = ai->st.self;
+  struct AI_data* b = (struct AI_data*) &(ai->st);
 
-    if (b != NULL && self != NULL)
-    {
-
-      //Checks if robot moved more than bounding box in last steps
-      // if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND <= self->cx){
-      //  if( self->cy <= ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND <= self->cy ){
-      if (dottie(b->sdx, b->sdy, b->smx, b->smy) < 0)
-      {
-        SelfDx = -1 * b->sdx;
-        SelfDy = -1 * b->sdy;
+  if(b != NULL && self != NULL){
+  
+  //Checks if robot moved more than bounding box in last steps
+  // if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND <= self->cx){
+  //  if( self->cy <= ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND <= self->cy ){
+      if(dottie(b->sdx , b->sdy, b->smx, b->smy) < 0){
+        SelfDx = -1*b->sdx;
+        SelfDy = -1*b->sdy;
+      }else{
+        SelfDx = 1*b->sdx;
+        SelfDy = 1*b->sdy;
       }
-      else
-      {
-        SelfDx = 1 * b->sdx;
-        SelfDy = 1 * b->sdy;
-      }
-      // }
-      // }else{
-      double orgdot = dottie(SelfDx, SelfDy, b->sdx, b->sdy);
-      double negdot = dottie(SelfDx, SelfDy, -b->sdx, -b->sdy);
-      if (orgdot > negdot)
-      {
-        SelfDx = b->sdx;
-        SelfDy = b->sdy;
-      }
-      else
-      {
-        SelfDx = -b->sdx;
-        SelfDy = -b->sdy;
-      }
-
-      printf("\nTrue Self Direction %lf %lf", DirectionToKickPosX, DirectionToKickPosY);
-
-      //Calculates Direction To Ball
-      DirectionToBallx = ai->st.old_bcx - ai->st.old_scx;
-      DirectionToBally = ai->st.old_bcy - ai->st.old_scy;
-      normalize(&DirectionToBallx, &DirectionToBally);
-
-      //Calculates Direction to To KickPos
-      DirectionToKickPosX = KickPosX - ai->st.old_scx;
-      DirectionToKickPosY = KickPosY - ai->st.old_scy;
-      normalize(&DirectionToKickPosX, &DirectionToKickPosY);
-      //printf("\nDirection to Kick Pos %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
-      //If it errors
-      // if(SelfDx == 0 && SelfDy == 0){
-      //   SelfDx = b->smx;
-      //   SelfDy = b->smy;
-      // }
-
-      recordDirection(self->dx, self->dy);
+  // }
+  // }else{
+    double orgdot = dottie(SelfDx, SelfDy, b->sdx, b->sdy);
+    double negdot = dottie(SelfDx, SelfDy, -b->sdx, -b->sdy);
+    if(orgdot > negdot){
+      SelfDx = b->sdx;
+      SelfDy = b->sdy;
+    }else{
+      SelfDx = -b->sdx;
+      SelfDy = -b->sdy;      
     }
-    switch (ai->st.state)
-    {
+
+  printf("\nTrue Self Direction %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
+
+
+  //Calculates Direction To Ball
+  DirectionToBallx = ai->st.old_bcx - ai->st.old_scx;
+  DirectionToBally = ai->st.old_bcy - ai->st.old_scy;
+  normalize(&DirectionToBallx, &DirectionToBally);
+
+  //Calculates Direction to To KickPos
+  DirectionToKickPosX = KickPosX - ai->st.old_scx;
+  DirectionToKickPosY = KickPosY - ai->st.old_scy;
+  normalize(&DirectionToKickPosX, &DirectionToKickPosY);
+  //printf("\nDirection to Kick Pos %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
+  //If it errors 
+  // if(SelfDx == 0 && SelfDy == 0){
+  //   SelfDx = b->smx;
+  //   SelfDy = b->smy;
+  // }
+  
+  recordDirection(self->dx,self->dy);
+  }
+  switch(ai->st.state){
     case CROTATE_TO_BALL:
       printf("\n[Rotating To Ball]\n");
       //Rotates
-      printf("Self dx: %lf dy: %lf\n", ai->st.sdx, ai->st.sdy);
-      printf("Average dx: %lf dy: %lf\n", SelfDx, SelfDy);
-      if (rotate(SelfDx, SelfDy, DirectionToBallx, DirectionToBally))
-      {
+      printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
+      printf("Average dx: %lf dy: %lf\n",SelfDx,SelfDy);
+      if(rotate(SelfDx, SelfDy, DirectionToBallx, DirectionToBally)){
         ai->st.state = CMOVE_TO_BALL;
       }
       break;
     case CMOVE_TO_BALL:
       printf("\n[Moving Forward]\n");
-      if (checkRotate(SelfDx, SelfDy, DirectionToBallx, DirectionToBally))
-      {
+      if(checkRotate(SelfDx, SelfDy, DirectionToBallx, DirectionToBally)){
         ai->st.state = CROTATE_TO_BALL;
       }
-      if (moveToBall(ai->st.old_scx, ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy))
-      {
-      }
-      else
-      {
+      if(moveToBall(ai->st.old_scx,ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy)){  
+  
+      }else{
         ai->st.state = CKICK_BALL;
       }
       break;
     case CKICK_BALL:
       printf("\n[Kicking Ball]\n");
-      if (kickBall() == 0)
-      {
+      if(kickBall() == 0){
         ai->st.state = CRESET_KICK;
       }
       break;
     case CRESET_KICK:
       printf("\n[Resting Kick]\n");
-      if (resetKick() == 0)
-      {
-        if (chasemode == 0)
-        {
-          ai->st.state = CROTATE_TO_BALL;
+      if(resetKick() == 0){
+        if(chasemode == 0){
+        ai->st.state = CROTATE_TO_BALL;
         }
       }
       break;
@@ -1328,129 +1213,105 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     case PFIND_KICK_POS:
       printf("\n[Finding Kick Pos]\n");
       rotate(SelfDx, SelfDy, 1, 0);
-      chasemode = 1;
-      if (ai->st.old_scx > ai->st.old_bcx)
-      {
+      chasemode=1;
+      if(ai->st.old_scx > ai->st.old_bcx){
         KickPosX = ai->st.old_bcx + KICK_DISTANCE;
         KickPosY = ai->st.old_bcy;
-      }
-      else
-      {
+      }else{
         KickPosX = ai->st.old_bcx - KICK_DISTANCE;
         KickPosY = ai->st.old_bcy;
       }
       // KickPosX = 350+512;
       // KickPosY = 377;
-      printf("\nPosition dx: %lf dy: %lf\n", ai->st.old_scx, ai->st.old_scy);
+      printf("\nPosition dx: %lf dy: %lf\n",ai->st.old_scx,ai->st.old_scy);
       //printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
       //ai->st.state = PROTATE_TO_KICKPOSY;
-      break;
+      break;          
     case PROTATE_TO_KICKPOSY:
       printf("\nPosX: %lf PosY: %lf", KickPosX, KickPosY);
       printf("\n[Rotating to Kick Pos]\n");
-      printf("Self dx: %lf dy: %lf\n", ai->st.sdx, ai->st.sdy);
-      printf("Average dx: %lf dy: %lf\n", SelfDx, SelfDy);
-      if (SelfDy < (KickPosY - KICKPOS_BOUND_Y))
-      {
-        if (rotate(SelfDx, SelfDy, 0, 1))
-        {
+      printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
+      printf("Average dx: %lf dy: %lf\n",SelfDx,SelfDy);
+      if(SelfDy < (KickPosY - KICKPOS_BOUND_Y)){
+        if(rotate(SelfDx, SelfDy, 0, 1)){
+          ai->st.state = PMOVE_TO_KICKPOSY;
+        }
+      }else if (SelfDy < (KickPosY + KICKPOS_BOUND_Y)){
+        if(rotate(SelfDx, SelfDy, 0, -1)){
           ai->st.state = PMOVE_TO_KICKPOSY;
         }
       }
-      else if (SelfDy < (KickPosY + KICKPOS_BOUND_Y))
-      {
-        if (rotate(SelfDx, SelfDy, 0, -1))
-        {
-          ai->st.state = PMOVE_TO_KICKPOSY;
-        }
-      }
-
-      break;
+      
+      break;  
     case PMOVE_TO_KICKPOSY:
       printf("\nRobot PosX: %lf PosY: %lf", ai->st.old_scx, ai->st.old_scy);
       printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
       printf("\n[Moving to Kick Pos]\n");
-      if (SelfDy < (KickPosY - KICKPOS_BOUND_Y))
-      {
-        if (checkRotate(SelfDx, SelfDy, 0, 1))
-        {
+      if(SelfDy < (KickPosY - KICKPOS_BOUND_Y)){
+        if(checkRotate(SelfDx, SelfDy, 0, 1)){
+          ai->st.state = PROTATE_TO_KICKPOSY;
+        } 
+      }else if (SelfDy > (KickPosY + KICKPOS_BOUND_Y)){
+        if(checkRotate(SelfDx, SelfDy, 0, -1)){
           ai->st.state = PROTATE_TO_KICKPOSY;
         }
       }
-      else if (SelfDy > (KickPosY + KICKPOS_BOUND_Y))
-      {
-        if (checkRotate(SelfDx, SelfDy, 0, -1))
-        {
-          ai->st.state = PROTATE_TO_KICKPOSY;
-        }
-      }
-      if (moveToKickPositionY(ai->st.old_scx, ai->st.old_scy, KickPosX, KickPosY))
-      {
-      }
-      else
-      {
+      if(moveToKickPositionY(ai->st.old_scx,ai->st.old_scy, KickPosX, KickPosY)){  
+        
+      }else{
         ai->st.state = PROTATE_TO_KICKPOSX;
       }
       break;
     case PROTATE_TO_KICKPOSX:
       printf("\nPosX: %lf PosY: %lf", KickPosX, KickPosY);
       printf("\n[Rotating to Kick Pos]\n");
-      printf("Self dx: %lf dy: %lf\n", ai->st.sdx, ai->st.sdy);
-      printf("Average dx: %lf dy: %lf\n", SelfDx, SelfDy);
-      if (SelfDx < (KickPosX - KICKPOS_BOUND_X))
-      {
-        if (rotate(SelfDx, SelfDy, 1, 0))
-        {
+      printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
+      printf("Average dx: %lf dy: %lf\n",SelfDx,SelfDy);
+      if(SelfDx < (KickPosX - KICKPOS_BOUND_X)){
+        if(rotate(SelfDx, SelfDy, 1, 0)){
+          ai->st.state = PMOVE_TO_KICKPOSX;
+        }
+      }else if (SelfDx > (KickPosX + KICKPOS_BOUND_X)){
+        if(rotate(SelfDx, SelfDy, -1, 0)){
           ai->st.state = PMOVE_TO_KICKPOSX;
         }
       }
-      else if (SelfDx > (KickPosX + KICKPOS_BOUND_X))
-      {
-        if (rotate(SelfDx, SelfDy, -1, 0))
-        {
-          ai->st.state = PMOVE_TO_KICKPOSX;
-        }
-      }
-      break;
+      break;  
     case PMOVE_TO_KICKPOSX:
       printf("\nRobot PosX: %lf PosY: %lf", ai->st.old_scx, ai->st.old_scy);
       printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
       printf("\n[Moving to Kick Pos]\n");
-      if (SelfDx < (KickPosX - KICKPOS_BOUND_X))
-      {
-        if (checkRotate(SelfDx, SelfDy, 1, 0))
-        {
+      if(SelfDx < (KickPosX - KICKPOS_BOUND_X)){
+        if(checkRotate(SelfDx, SelfDy, 1, 0)){
           ai->st.state = PROTATE_TO_KICKPOSX;
-        }
-      }
-      else if (SelfDx > (KickPosX + KICKPOS_BOUND_X))
-      {
-        if (checkRotate(SelfDx, SelfDy, -1, 0))
-        {
+        } 
+      }else if (SelfDx > (KickPosX + KICKPOS_BOUND_X)){
+        if(checkRotate(SelfDx, SelfDy, -1, 0)){
           ai->st.state = PROTATE_TO_KICKPOSX;
         }
       }
       //       if(SelfDy < (KickPosY - KICKPOS_BOUND_Y)){
       //   if(checkRotate(SelfDx, SelfDy, 0, 1)){
       //     ai->st.state = PROTATE_TO_KICKPOSY;
-      //   }
+      //   } 
       // }else if (SelfDy > (KickPosY + KICKPOS_BOUND_Y)){
       //   if(checkRotate(SelfDx, SelfDy, 0, -1)){
       //     ai->st.state = PROTATE_TO_KICKPOSY;
       //   }
       // }
-      if (moveToKickPositionX(ai->st.old_scx, ai->st.old_scy, KickPosX, KickPosY))
-      {
-      }
-      else
-      {
+      if(moveToKickPositionX(ai->st.old_scx,ai->st.old_scy, KickPosX, KickPosY)){  
+        
+      }else{
         ai->st.state = CKICK_BALL;
       }
       break;
-    }
+  }  
   }
-  frame++;
-}
+      frame++;
+ }
+
+
+
 
 /**********************************************************************************
  TO DO:
@@ -1465,3 +1326,5 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
  You will lose marks if AI_main() is cluttered with code that doesn't belong
  there.
 **********************************************************************************/
+
+
