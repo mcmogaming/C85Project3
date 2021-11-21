@@ -1113,8 +1113,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   if(b != NULL && self != NULL){
   
   //Checks if robot moved more than bounding box in last steps
-  if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND < self->cx){
-   if( self->cy < ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND < self->cy ){
+  // if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND <= self->cx){
+  //  if( self->cy <= ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND <= self->cy ){
       if(dottie(b->sdx , b->sdy, b->smx, b->smy) < 0){
         TrueSelfDx = -1*b->sdx;
         TrueSelfDy = -1*b->sdy;
@@ -1122,8 +1122,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
         TrueSelfDx = 1*b->sdx;
         TrueSelfDy = 1*b->sdy;
       }
-  }
-  }else{
+  // }
+  // }else{
     double orgdot = dottie(TrueSelfDx, TrueSelfDy, b->sdx, b->sdy);
     double negdot = dottie(TrueSelfDx, TrueSelfDy, -b->sdx, -b->sdy);
     if(orgdot > negdot){
@@ -1133,6 +1133,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       TrueSelfDx = -b->sdx;
       TrueSelfDy = -b->sdy;      
     }
+
+  printf("\nTrue Self Direction %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
 
 
   //Calculates Direction To Ball
@@ -1144,7 +1146,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   DirectionToKickPosX = KickPosX - ai->st.old_scx;
   DirectionToKickPosY = KickPosY - ai->st.old_scy;
   normalize(&DirectionToKickPosX, &DirectionToKickPosY);
-  printf("\nDirection to Kick Pos %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
+  //printf("\nDirection to Kick Pos %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
   //If it errors 
   // if(TrueSelfDx == 0 && TrueSelfDy == 0){
   //   TrueSelfDx = b->smx;
@@ -1193,18 +1195,20 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       break;
     case PFIND_KICK_POS:
       printf("\n[Finding Kick Pos]\n");
-      chasemode=1;
-      if(ai->st.old_scx > ai->st.old_bcx){
-        KickPosX = ai->st.old_bcx + KICK_DISTANCE;
-        KickPosY = ai->st.old_bcy;
-      }else{
-        KickPosX = ai->st.old_bcx - KICK_DISTANCE;
-        KickPosY = ai->st.old_bcy;
-      }
+      rotate(TrueSelfDx, TrueSelfDy, 1, 0);
+      // chasemode=1;
+      // if(ai->st.old_scx > ai->st.old_bcx){
+      //   KickPosX = ai->st.old_bcx + KICK_DISTANCE;
+      //   KickPosY = ai->st.old_bcy;
+      // }else{
+      //   KickPosX = ai->st.old_bcx - KICK_DISTANCE;
+      //   KickPosY = ai->st.old_bcy;
+      // }
       // KickPosX = 350+512;
       // KickPosY = 377;
-      printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
-      ai->st.state = PROTATE_TO_KICKPOSY;
+      printf("\nPosition dx: %lf dy: %lf\n",ai->st.old_scx,ai->st.old_scy);
+      //printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
+      //ai->st.state = PROTATE_TO_KICKPOSY;
       break;          
     case PROTATE_TO_KICKPOSY:
       printf("\nPosX: %lf PosY: %lf", KickPosX, KickPosY);
@@ -1290,7 +1294,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   }
 
  }
-}
+
 
 
 
