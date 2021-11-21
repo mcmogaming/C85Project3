@@ -90,7 +90,7 @@ struct AI_data{
 	double omx,omy;			// Opponent motion vector
 	double odx,ody;                 // Opponent heading direction (from blob shape)
 
-	double tdx, tdy; //Added by me!
+	//double tdx, tdy; //Added by me!
 };
 
 struct RoboAI {
