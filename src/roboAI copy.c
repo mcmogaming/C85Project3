@@ -75,7 +75,7 @@
 #define KICK_DISTANCE 200;
 
 #define BALL_BOUND_SLOW 250
-#define BALL_BOUND 100
+#define BALL_BOUND 200
 
 #define KICKPOS_BOUND_SLOW 250
 #define KICKPOS_BOUND 25
@@ -768,10 +768,10 @@ int moveAndKickBall(){
     BT_drive(LPORT,RPORT, 100);
     printf("Accelerating 100");
   }else{
-    if(timeKicking == 10*kick_scale){
+    if(timeKicking == 2*kick_scale){
       BT_motor_port_start(KPORT, 100);
     }
-    if(timeKicking > 20*kick_scale){
+    if(timeKicking > 5*kick_scale){
       Brake();
       return 0;
     }
@@ -829,15 +829,8 @@ void normalize(double* x, double* y){
 //   }
 // }
 
-double min(double a, double b){
-  if(a > b){
-    return b;
-  }
-  return a;
-}
-
 int rotate(double ax, double ay, double bx, double by){ //Sends a rotation command to the box for that vector
-  double power = min((int) 50*constrainted_abs_diff(ax,ay,bx,by), 100); //Porportional PID 
+  double power = (int) 100*constrainted_abs_diff(ax,ay,bx,by); //Porportional PID 
   
   if(power > 3 && power <15){ //Sets floor power to be 10
     power = 15;
@@ -876,12 +869,12 @@ int moveToBall(double scx, double scy, double bcx, double bcy){
 
   if(fabs(scx - bcx) < BALL_BOUND_SLOW){
     if(fabs(scy - bcy) < BALL_BOUND_SLOW){
-      moveForward(100);
+      moveForward(15);
     }else{
-      moveForward(100);
+      moveForward(50);
     }
   }else{
-    moveForward(100);
+    moveForward(50);
   }
 
   return 1;
@@ -1110,7 +1103,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   struct blob* self = ai->st.self;
   struct AI_data* b = (struct AI_data*) &(ai->st);
 
-  if(b != NULL && self != NULL){
+  if(b != NULL){
   
   //Checks if robot moved more than bounding box in last steps
   if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND < self->cx){
@@ -1176,7 +1169,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       break;
     case CKICK_BALL:
       printf("\n[Kicking Ball]\n");
-      if(kickBall() == 0){
+      if(moveAndKickBall() == 0){
         ai->st.state = CRESET_KICK;
       }
       break;
@@ -1194,7 +1187,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     case PFIND_KICK_POS:
       printf("\n[Finding Kick Pos]\n");
       chasemode=1;
-      if(ai->st.old_scx > ai->st.old_bcx){
+      if(ai->st.side){
         KickPosX = ai->st.old_bcx + KICK_DISTANCE;
         KickPosY = ai->st.old_bcy;
       }else{

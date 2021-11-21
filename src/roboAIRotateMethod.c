@@ -40,8 +40,9 @@
 #define PDO_NOTHING 106
 #define PMOVE_TO_KICKPOSX 107
 #define PMOVE_TO_KICKPOSY 108
-#define PROTATE_TO_KICKPOSX 109
-#define PROTATE_TO_KICKPOSY 110
+#define PMOVE_TO_KICKROTATEX 109
+#define PMOVE_TO_KICKROTATEY 110
+#define PROTATE_TO_GOAL 111
 
 #define CROTATE_TO_BALL 201
 #define CMOVE_TO_BALL 202
@@ -75,7 +76,7 @@
 #define KICK_DISTANCE 200;
 
 #define BALL_BOUND_SLOW 250
-#define BALL_BOUND 100
+#define BALL_BOUND 200
 
 #define KICKPOS_BOUND_SLOW 250
 #define KICKPOS_BOUND 25
@@ -99,8 +100,6 @@ double DirectionToKickPosX = 0;
 double DirectionToKickPosY = 0;
 double KickPosX = 0;
 double KickPosY = 0;
-
-int kick_scale = 1;
 
 
 int timeKicking = 0;
@@ -768,10 +767,10 @@ int moveAndKickBall(){
     BT_drive(LPORT,RPORT, 100);
     printf("Accelerating 100");
   }else{
-    if(timeKicking == 10*kick_scale){
+    if(timeKicking == 5){
       BT_motor_port_start(KPORT, 100);
     }
-    if(timeKicking > 20*kick_scale){
+    if(timeKicking > 10){
       Brake();
       return 0;
     }
@@ -829,15 +828,8 @@ void normalize(double* x, double* y){
 //   }
 // }
 
-double min(double a, double b){
-  if(a > b){
-    return b;
-  }
-  return a;
-}
-
 int rotate(double ax, double ay, double bx, double by){ //Sends a rotation command to the box for that vector
-  double power = min((int) 50*constrainted_abs_diff(ax,ay,bx,by), 100); //Porportional PID 
+  double power = (int) 100*constrainted_abs_diff(ax,ay,bx,by); //Porportional PID 
   
   if(power > 3 && power <15){ //Sets floor power to be 10
     power = 15;
@@ -876,12 +868,12 @@ int moveToBall(double scx, double scy, double bcx, double bcy){
 
   if(fabs(scx - bcx) < BALL_BOUND_SLOW){
     if(fabs(scy - bcy) < BALL_BOUND_SLOW){
-      moveForward(100);
+      moveForward(15);
     }else{
-      moveForward(100);
+      moveForward(50);
     }
   }else{
-    moveForward(100);
+    moveForward(50);
   }
 
   return 1;
@@ -925,22 +917,6 @@ int moveToKickPositionY(double scx, double scy, double bcx, double bcy){
   return 1;
 }
 
-int moveToKickPositionX(double scx, double scy, double bcx, double bcy){
-//Checks if robot is close to kick pos
-
-    if(fabs(scx - bcx) < KICKPOS_BOUND){
-      Brake();
-      return 0;  
-    }
-
-    if(fabs(scx - bcx) < KICKPOS_BOUND_SLOW){
-      moveForward(15);
-    }else{
-      moveForward(50);
-    }
-
-  return 1;
-}
 
 /**************************************************************************
  * AI state machine - this is where you will implement your soccer
@@ -1110,7 +1086,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   struct blob* self = ai->st.self;
   struct AI_data* b = (struct AI_data*) &(ai->st);
 
-  if(b != NULL && self != NULL){
+  if(b != NULL){
   
   //Checks if robot moved more than bounding box in last steps
   if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND < self->cx){
@@ -1171,12 +1147,16 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       if(moveToBall(ai->st.old_scx,ai->st.old_scy, ai->st.old_bcx, ai->st.old_bcy)){  
   
       }else{
+        if(chasemode == 0){
         ai->st.state = CKICK_BALL;
+        }else{
+          ai->st.state = PROTATE_TO_GOAL;
+        }
       }
       break;
     case CKICK_BALL:
       printf("\n[Kicking Ball]\n");
-      if(kickBall() == 0){
+      if(moveAndKickBall() == 0){
         ai->st.state = CRESET_KICK;
       }
       break;
@@ -1194,7 +1174,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     case PFIND_KICK_POS:
       printf("\n[Finding Kick Pos]\n");
       chasemode=1;
-      if(ai->st.old_scx > ai->st.old_bcx){
+      if(ai->st.side){
         KickPosX = ai->st.old_bcx + KICK_DISTANCE;
         KickPosY = ai->st.old_bcy;
       }else{
@@ -1204,86 +1184,45 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       // KickPosX = 350+512;
       // KickPosY = 377;
       printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
-      ai->st.state = PROTATE_TO_KICKPOSY;
+      ai->st.state = PROTATE_TO_KICKPOS;
       break;          
-    case PROTATE_TO_KICKPOSY:
+    case PROTATE_TO_KICKPOS:
       printf("\nPosX: %lf PosY: %lf", KickPosX, KickPosY);
       printf("\n[Rotating to Kick Pos]\n");
       printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
       printf("Average dx: %lf dy: %lf\n",TrueSelfDx,TrueSelfDy);
-      if(TrueSelfDy < (KickPosY - KICKPOS_BOUND_Y)){
-        if(rotate(TrueSelfDx, TrueSelfDy, 0, 1)){
-          ai->st.state = PMOVE_TO_KICKPOSY;
-        }
-      }else if (TrueSelfDy < (KickPosY + KICKPOS_BOUND_Y)){
-        if(rotate(TrueSelfDx, TrueSelfDy, 0, -1)){
-          ai->st.state = PMOVE_TO_KICKPOSY;
-        }
+      if(rotate(TrueSelfDx, TrueSelfDy, DirectionToKickPosX, DirectionToKickPosY)){
+        ai->st.state = PMOVE_TO_KICKPOS;
       }
-      
       break;  
-    case PMOVE_TO_KICKPOSY:
+    case PMOVE_TO_KICKPOS:
+          printf("\nRobot PosX: %lf PosY: %lf", ai->st.old_scx, ai->st.old_scy);
+          printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
+          printf("\n[Moving to Kick Pos]\n");
+      if(checkRotate(TrueSelfDx, TrueSelfDy, DirectionToKickPosX, DirectionToKickPosY)){
+        ai->st.state = PROTATE_TO_KICKPOS;
+      }
+      if(moveToKickPosition(ai->st.old_scx,ai->st.old_scy, KickPosX, KickPosY)){  
+        
+      }else{
+        ai->st.state = CROTATE_TO_BALL;
+      }
+      break;
+      case PROTATE_TO_GOAL:
       printf("\nRobot PosX: %lf PosY: %lf", ai->st.old_scx, ai->st.old_scy);
       printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
       printf("\n[Moving to Kick Pos]\n");
-      if(TrueSelfDy < (KickPosY - KICKPOS_BOUND_Y)){
-        if(checkRotate(TrueSelfDx, TrueSelfDy, 0, 1)){
-          ai->st.state = PROTATE_TO_KICKPOSY;
-        } 
-      }else if (TrueSelfDy > (KickPosY + KICKPOS_BOUND_Y)){
-        if(checkRotate(TrueSelfDx, TrueSelfDy, 0, -1)){
-          ai->st.state = PROTATE_TO_KICKPOSY;
-        }
-      }
-      if(moveToKickPositionY(ai->st.old_scx,ai->st.old_scy, KickPosX, KickPosY)){  
-        
-      }else{
-        ai->st.state = PROTATE_TO_KICKPOSX;
-      }
-      break;
-    case PROTATE_TO_KICKPOSX:
-      printf("\nPosX: %lf PosY: %lf", KickPosX, KickPosY);
-      printf("\n[Rotating to Kick Pos]\n");
-      printf("Self dx: %lf dy: %lf\n",ai->st.sdx,ai->st.sdy);
-      printf("Average dx: %lf dy: %lf\n",TrueSelfDx,TrueSelfDy);
       if(TrueSelfDx < (KickPosX - KICKPOS_BOUND_X)){
         if(rotate(TrueSelfDx, TrueSelfDy, 1, 0)){
-          ai->st.state = PMOVE_TO_KICKPOSX;
+          ai->st.state = CKICK_BALL;
         }
       }else if (TrueSelfDx > (KickPosX + KICKPOS_BOUND_X)){
         if(rotate(TrueSelfDx, TrueSelfDy, -1, 0)){
-          ai->st.state = PMOVE_TO_KICKPOSX;
+          ai->st.state = CKICK_BALL;
         }
-      }
-      break;  
-    case PMOVE_TO_KICKPOSX:
-      printf("\nRobot PosX: %lf PosY: %lf", ai->st.old_scx, ai->st.old_scy);
-      printf("\nPosX: %lf PosY: %lf\n", KickPosX, KickPosY);
-      printf("\n[Moving to Kick Pos]\n");
-      if(TrueSelfDx < (KickPosX - KICKPOS_BOUND_X)){
-        if(checkRotate(TrueSelfDx, TrueSelfDy, 1, 0)){
-          ai->st.state = PROTATE_TO_KICKPOSX;
-        } 
-      }else if (TrueSelfDx > (KickPosX + KICKPOS_BOUND_X)){
-        if(checkRotate(TrueSelfDx, TrueSelfDy, -1, 0)){
-          ai->st.state = PROTATE_TO_KICKPOSX;
-        }
-      }
-      //       if(TrueSelfDy < (KickPosY - KICKPOS_BOUND_Y)){
-      //   if(checkRotate(TrueSelfDx, TrueSelfDy, 0, 1)){
-      //     ai->st.state = PROTATE_TO_KICKPOSY;
-      //   } 
-      // }else if (TrueSelfDy > (KickPosY + KICKPOS_BOUND_Y)){
-      //   if(checkRotate(TrueSelfDx, TrueSelfDy, 0, -1)){
-      //     ai->st.state = PROTATE_TO_KICKPOSY;
-      //   }
-      // }
-      if(moveToKickPositionX(ai->st.old_scx,ai->st.old_scy, KickPosX, KickPosY)){  
-        
-      }else{
-        ai->st.state = CKICK_BALL;
       }
       break;
+
   }  
 
 
