@@ -91,8 +91,8 @@ int curpower = -101;
 int chasemode = 0;
 int frame = 0;
 
-double recSelfDirection [BUFFER_SIZE][2];
-double recSelfDirectionRad [BUFFER_SIZE][2];
+double recDirection [BUFFER_SIZE][2];
+double recDirectionRad [BUFFER_SIZE];
 
 double SelfDx = 0;
 double SelfDy = 0;
@@ -107,8 +107,14 @@ double KickPosY = 0;
 
 int kick_scale = 1;
 
-
 int timeKicking = 0;
+
+int ROTATING = 0;
+
+//Variables reused in functions
+double directionVector [2];
+double radians;
+
 
 double dottie(double vx, double vy, double ux, double uy)
 {
@@ -373,6 +379,8 @@ struct blob *id_coloured_blob2(struct RoboAI *ai, struct blob *blobs, int col)
 
  return(fnd);
 }
+
+
 
 void track_agents(struct RoboAI *ai, struct blob *blobs)
 {
@@ -735,14 +743,31 @@ void calculate(){
 
 }
 
-void calculateSelfDirectionRad{
-  
+double len(double x, double y){
+  return sqrt(x*x + y*y);
+}
+
+double calculateSelfDirectionRad(){
+    double dt1 [2] = {recDirection[0][X], recDirection[0][Y]};
+    double dt2 [2] = {recDirection[1][X], recDirection[1][Y]};
+    double angle = 0;
+    angle = acos((dottie(dt1[X],dt1[Y],dt2[X],dt2[Y]))/(len(dt1[X],dt1[Y])*len(dt2[X],dt2[Y])));
+    return angle;
+}
+
+void recordDirection(){
+  double directionVector [2] = {SelfDx, SelfDy}; 
+  pushToArrayOfArray(recDirection, directionVector, 2);
+}
+
+void recordDirectionRad(){
+  radians = calculateSelfDirectionRad();
+  pushToArray(recDirectionRad, radians);
 }
 
 void record(struct RoboAI *ai){
-  double SelfDirectionVector [2] = {SelfDx, SelfDy}; 
-  pushToArrayOfArray(recSelfDirection, SelfDirectionVector, 2);
-
+  recordDirection();
+  recordDirectionRad();
 }
 
 void moveForward(int power){
@@ -828,15 +853,6 @@ int resetKick(){
     }
   }
   return 1;
-}
-
-void recordDirection(double ax, double ay){
-  for(int i = BUFFER_SIZE; i > 0; i--){
-    direction_buffer[i-1][X] = direction_buffer[i][X];
-    direction_buffer[i-1][Y] = direction_buffer[i][Y];
-  }
-  direction_buffer[BUFFER_SIZE-1][X] = ax;
-  direction_buffer[BUFFER_SIZE-1][Y] = ay;
 }
 
 void normalize(double* x, double* y){
@@ -957,6 +973,35 @@ int moveToKickPositionX(double scx, double scy, double bcx, double bcy){
     }
 
   return 1;
+}
+
+void fixDirectionalVector(struct RobotAI* ai){
+//Checks if robot moved more than bounding box in last steps
+  struct AI_data* b = (struct AI_data*) &(ai->st);
+  if(ai != NULL){
+  // if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND <= self->cx){
+  //  if( self->cy <= ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND <= self->cy ){ 
+    if(dottie(b->sdx , b->sdy, b->smx, b->smy) < 0){
+      SelfDx = -1*b->sdx;
+      SelfDy = -1*b->sdy;
+    }else{
+      SelfDx = 1*b->sdx;
+      SelfDy = 1*b->sdy;
+    }
+  // }
+  // }else{
+    double orgdot = dottie(SelfDx, SelfDy, b->sdx, b->sdy);
+    double negdot = dottie(SelfDx, SelfDy, -b->sdx, -b->sdy);
+    if(orgdot > negdot){
+      SelfDx = b->sdx;
+      SelfDy = b->sdy;
+    }else{
+      SelfDx = -b->sdx;
+      SelfDy = -b->sdy;      
+    }
+  //}
+  }
+  printf("\nTrue Self Direction %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
 }
 
 /**************************************************************************
@@ -1127,32 +1172,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   struct blob* self = ai->st.self;
   struct AI_data* b = (struct AI_data*) &(ai->st);
 
-  if(b != NULL && self != NULL){
-  
-  //Checks if robot moved more than bounding box in last steps
-  // if(self->cx  < ai->st.old_ocx - D_BOUND && ai->st.old_ocx + D_BOUND <= self->cx){
-  //  if( self->cy <= ai->st.old_ocy - D_BOUND && ai->st.old_ocy + D_BOUND <= self->cy ){
-      if(dottie(b->sdx , b->sdy, b->smx, b->smy) < 0){
-        SelfDx = -1*b->sdx;
-        SelfDy = -1*b->sdy;
-      }else{
-        SelfDx = 1*b->sdx;
-        SelfDy = 1*b->sdy;
-      }
-  // }
-  // }else{
-    double orgdot = dottie(SelfDx, SelfDy, b->sdx, b->sdy);
-    double negdot = dottie(SelfDx, SelfDy, -b->sdx, -b->sdy);
-    if(orgdot > negdot){
-      SelfDx = b->sdx;
-      SelfDy = b->sdy;
-    }else{
-      SelfDx = -b->sdx;
-      SelfDy = -b->sdy;      
-    }
-
-  printf("\nTrue Self Direction %lf %lf", DirectionToKickPosX ,DirectionToKickPosY);
-
+  if(b != NULL && self != NULL){ 
 
   //Calculates Direction To Ball
   DirectionToBallx = ai->st.old_bcx - ai->st.old_scx;
